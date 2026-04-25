@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# fledge-issues — list and view GitHub issues via the gh CLI.
-# Invoked via: fledge issues [view <num> | list] [OPTIONS]
+# fledge-github-issues — list and view GitHub issues via the gh CLI.
+# Invoked via: fledge github issues [view <num> | list] [OPTIONS]
 set -euo pipefail
 
 ACTION="list"
@@ -36,11 +36,11 @@ while [ $# -gt 0 ]; do
     --json)        JSON=true; shift;;
     -h|--help)
       cat <<'EOF'
-fledge issues — list and view GitHub issues
+fledge github issues — list and view GitHub issues
 
 USAGE:
-  fledge issues [list]                List open issues (default)
-  fledge issues view <NUMBER>         View a specific issue
+  fledge github issues [list]                List open issues (default)
+  fledge github issues view <NUMBER>         View a specific issue
 
 OPTIONS:
   -s, --state <STATE>   open | closed | all  (default: open)
@@ -49,27 +49,27 @@ OPTIONS:
       --json            Output JSON
 
 EXAMPLES:
-  fledge issues
-  fledge issues --state all --limit 50
-  fledge issues view 42 --json
+  fledge github issues
+  fledge github issues --state all --limit 50
+  fledge github issues view 42 --json
 EOF
       exit 0
       ;;
     *)
-      echo "fledge-issues: unknown argument '$1'" >&2
+      echo "fledge github issues: unknown argument '$1'" >&2
       exit 64
       ;;
   esac
 done
 
 if ! command -v gh >/dev/null 2>&1; then
-  echo "fledge-issues: gh CLI is not installed. https://cli.github.com/" >&2
+  echo "fledge github issues: gh CLI is not installed. https://cli.github.com/" >&2
   exit 127
 fi
 
 if [ "$ACTION" = "view" ]; then
   if [ -z "$NUMBER" ]; then
-    echo "fledge-issues: 'view' requires an issue number. Try: fledge issues view 42" >&2
+    echo "fledge github issues: 'view' requires an issue number. Try: fledge github issues view 42" >&2
     exit 64
   fi
   if [ "$JSON" = "true" ]; then

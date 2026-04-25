@@ -6,16 +6,6 @@ author = "0xLeif"
 license = "MIT"
 
 [[commands]]
-name = "checks"
-description = "View CI/CD check status for a branch"
-binary = "bin/fledge-checks"
-
-[[commands]]
-name = "issues"
-description = "List and view GitHub issues"
-binary = "bin/fledge-issues"
-
-[[commands]]
-name = "prs"
-description = "List and view GitHub pull requests"
-binary = "bin/fledge-prs"
+name = "github"
+description = "GitHub commands (checks, issues, prs) via the gh CLI"
+binary = "bin/fledge-github"

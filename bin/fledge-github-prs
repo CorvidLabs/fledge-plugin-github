@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# fledge-prs — list and view GitHub pull requests via the gh CLI.
-# Invoked via: fledge prs [view <num> | list] [OPTIONS]
+# fledge-github-prs — list and view GitHub pull requests via the gh CLI.
+# Invoked via: fledge github prs [view <num> | list] [OPTIONS]
 set -euo pipefail
 
 ACTION="list"
@@ -33,11 +33,11 @@ while [ $# -gt 0 ]; do
     --json)      JSON=true; shift;;
     -h|--help)
       cat <<'EOF'
-fledge prs — list and view GitHub pull requests
+fledge github prs — list and view GitHub pull requests
 
 USAGE:
-  fledge prs [list]                List open PRs (default)
-  fledge prs view <NUMBER>         View a specific PR
+  fledge github prs [list]                List open PRs (default)
+  fledge github prs view <NUMBER>         View a specific PR
 
 OPTIONS:
   -s, --state <STATE>   open | closed | merged | all  (default: open)
@@ -45,27 +45,27 @@ OPTIONS:
       --json            Output JSON
 
 EXAMPLES:
-  fledge prs
-  fledge prs --state merged --limit 5
-  fledge prs view 256 --json
+  fledge github prs
+  fledge github prs --state merged --limit 5
+  fledge github prs view 256 --json
 EOF
       exit 0
       ;;
     *)
-      echo "fledge-prs: unknown argument '$1'" >&2
+      echo "fledge github prs: unknown argument '$1'" >&2
       exit 64
       ;;
   esac
 done
 
 if ! command -v gh >/dev/null 2>&1; then
-  echo "fledge-prs: gh CLI is not installed. https://cli.github.com/" >&2
+  echo "fledge github prs: gh CLI is not installed. https://cli.github.com/" >&2
   exit 127
 fi
 
 if [ "$ACTION" = "view" ]; then
   if [ -z "$NUMBER" ]; then
-    echo "fledge-prs: 'view' requires a PR number. Try: fledge prs view 256" >&2
+    echo "fledge github prs: 'view' requires a PR number. Try: fledge github prs view 256" >&2
     exit 64
   fi
   if [ "$JSON" = "true" ]; then

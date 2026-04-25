@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# fledge-github — dispatcher for GitHub subcommands.
+# Invoked via: fledge github <checks|issues|prs> [OPTIONS]
+set -euo pipefail
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+
+usage() {
+  cat <<'EOF'
+fledge github — GitHub commands via the gh CLI
+
+USAGE:
+  fledge github <SUBCOMMAND> [OPTIONS]
+
+SUBCOMMANDS:
+  checks    View CI/CD check status for a branch
+  issues    List and view GitHub issues
+  prs       List and view GitHub pull requests
+
+Run `fledge github <SUBCOMMAND> --help` for subcommand-specific options.
+EOF
+}
+
+if [ $# -eq 0 ]; then
+  usage
+  exit 64
+fi
+
+SUB="$1"
+shift
+
+case "$SUB" in
+  checks|issues|prs)
+    exec "${DIR}/fledge-github-${SUB}" "$@"
+    ;;
+  -h|--help|help)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "fledge github: unknown subcommand '$SUB'" >&2
+    echo "Run 'fledge github --help' for usage." >&2
+    exit 64
+    ;;
+esac
