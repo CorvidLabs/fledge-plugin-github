@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.2.1] - 2026-04-25
+
+### Other
+
+- Fix: resolve dispatcher symlink to find sibling helpers (f6dd786)
+
 ## [v0.2.0] - 2026-04-25
 
 ### Features
