@@ -1,6 +1,6 @@
 [plugin]
 name = "fledge-plugin-github"
-version = "0.1.0"
+version = "0.2.0"
 description = "GitHub commands for fledge — view CI checks, issues, and pull requests via the gh CLI"
 author = "0xLeif"
 license = "MIT"
