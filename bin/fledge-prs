@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# fledge-prs — list and view GitHub pull requests via the gh CLI.
+# Invoked via: fledge prs [view <num> | list] [OPTIONS]
+set -euo pipefail
+
+ACTION="list"
+NUMBER=""
+STATE="open"
+LIMIT="20"
+JSON=false
+
+if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
+  case "$1" in
+    view)
+      ACTION="view"
+      shift
+      if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
+        NUMBER="$1"
+        shift
+      fi
+      ;;
+    list)
+      ACTION="list"
+      shift
+      ;;
+  esac
+fi
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -s|--state)  STATE="${2:-}"; shift 2;;
+    -l|--limit)  LIMIT="${2:-}"; shift 2;;
+    --json)      JSON=true; shift;;
+    -h|--help)
+      cat <<'EOF'
+fledge prs — list and view GitHub pull requests
+
+USAGE:
+  fledge prs [list]                List open PRs (default)
+  fledge prs view <NUMBER>         View a specific PR
+
+OPTIONS:
+  -s, --state <STATE>   open | closed | merged | all  (default: open)
+  -l, --limit <N>       Maximum results (default: 20)
+      --json            Output JSON
+
+EXAMPLES:
+  fledge prs
+  fledge prs --state merged --limit 5
+  fledge prs view 256 --json
+EOF
+      exit 0
+      ;;
+    *)
+      echo "fledge-prs: unknown argument '$1'" >&2
+      exit 64
+      ;;
+  esac
+done
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo "fledge-prs: gh CLI is not installed. https://cli.github.com/" >&2
+  exit 127
+fi
+
+if [ "$ACTION" = "view" ]; then
+  if [ -z "$NUMBER" ]; then
+    echo "fledge-prs: 'view' requires a PR number. Try: fledge prs view 256" >&2
+    exit 64
+  fi
+  if [ "$JSON" = "true" ]; then
+    gh pr view "$NUMBER" --json number,title,state,author,body,labels,createdAt,updatedAt,url,baseRefName,headRefName,isDraft,mergeable,statusCheckRollup
+  else
+    gh pr view "$NUMBER"
+  fi
+  exit 0
+fi
+
+# list
+if [ "$JSON" = "true" ]; then
+  gh pr list --state "$STATE" --limit "$LIMIT" \
+    --json number,title,state,author,createdAt,url,baseRefName,headRefName,isDraft,labels
+else
+  gh pr list --state "$STATE" --limit "$LIMIT"
+fi
