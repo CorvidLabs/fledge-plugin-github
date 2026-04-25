@@ -3,7 +3,17 @@
 # Invoked via: fledge github <checks|issues|prs> [OPTIONS]
 set -euo pipefail
 
-DIR="$(cd "$(dirname "$0")" && pwd)"
+# Resolve any symlink chain to find the real plugin dir. Required because
+# fledge installs plugins by symlinking only the declared binary into a
+# shared bin/ — sibling helpers live next to the symlink target, not the
+# symlink itself.
+SOURCE="${BASH_SOURCE[0]:-$0}"
+while [ -L "$SOURCE" ]; do
+  LINK_DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$LINK_DIR/$SOURCE"
+done
+DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
 
 usage() {
   cat <<'EOF'
