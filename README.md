@@ -48,7 +48,7 @@ Options: `--state {open,closed,all}`, `--limit <N>`, `--label <label>`, `--json`
 
 ### `fledge github prs [list | view <num>] [OPTIONS]`
 
-Browse pull requests. PR *creation* still lives in core via `fledge work pr` — this plugin is read-only browsing.
+Browse pull requests. PR creation uses `gh pr create` directly (pure git flow) — this plugin is read-only browsing.
 
 ```
 $ fledge github prs --state merged --limit 5
