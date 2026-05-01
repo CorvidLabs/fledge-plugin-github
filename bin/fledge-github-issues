@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# fledge-github-issues — list and view GitHub issues via the gh CLI.
-# Invoked via: fledge github issues [view <num> | list] [OPTIONS]
+# fledge-github-issues — list, view, and create GitHub issues via the gh CLI.
+# Invoked via: fledge github issues [create | view <num> | list] [OPTIONS]
 set -euo pipefail
 
 ACTION="list"
@@ -8,9 +8,12 @@ NUMBER=""
 STATE="open"
 LIMIT="20"
 LABEL=""
+TITLE=""
+BODY=""
+ASSIGNEE=""
 JSON=false
 
-# First positional arg can be a subcommand: view or list
+# First positional arg can be a subcommand: create, view, or list
 if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
   case "$1" in
     view)
@@ -21,6 +24,10 @@ if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
         shift
       fi
       ;;
+    create)
+      ACTION="create"
+      shift
+      ;;
     list)
       ACTION="list"
       shift
@@ -30,28 +37,41 @@ fi
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -s|--state)    STATE="${2:-}"; shift 2;;
-    -l|--limit)    LIMIT="${2:-}"; shift 2;;
-    --label)       LABEL="${2:-}"; shift 2;;
-    --json)        JSON=true; shift;;
+    -s|--state)      STATE="${2:-}"; shift 2;;
+    -l|--limit)      LIMIT="${2:-}"; shift 2;;
+    --label)         LABEL="${2:-}"; shift 2;;
+    -t|--title)      TITLE="${2:-}"; shift 2;;
+    -b|--body)       BODY="${2:-}"; shift 2;;
+    -a|--assignee)   ASSIGNEE="${2:-}"; shift 2;;
+    --json)          JSON=true; shift;;
     -h|--help)
       cat <<'EOF'
-fledge github issues — list and view GitHub issues
+fledge github issues — list, view, and create GitHub issues
 
 USAGE:
   fledge github issues [list]                List open issues (default)
   fledge github issues view <NUMBER>         View a specific issue
+  fledge github issues create                Create a new issue
 
-OPTIONS:
+LIST / VIEW OPTIONS:
   -s, --state <STATE>   open | closed | all  (default: open)
   -l, --limit <N>       Maximum results (default: 20)
       --label <LABEL>   Filter by label
       --json            Output JSON
 
+CREATE OPTIONS:
+  -t, --title <TITLE>      Issue title
+  -b, --body <BODY>        Issue body
+      --label <LABEL>      Attach label (repeatable)
+  -a, --assignee <LOGIN>   Assign to user
+      --json               Output JSON (number, url, title)
+
 EXAMPLES:
   fledge github issues
   fledge github issues --state all --limit 50
   fledge github issues view 42 --json
+  fledge github issues create --title "Bug: something broke"
+  fledge github issues create --title "Feature request" --label enhancement --assignee octocat
 EOF
       exit 0
       ;;
@@ -76,6 +96,20 @@ if [ "$ACTION" = "view" ]; then
     gh issue view "$NUMBER" --json number,title,state,author,body,labels,createdAt,updatedAt,url,assignees
   else
     gh issue view "$NUMBER"
+  fi
+  exit 0
+fi
+
+if [ "$ACTION" = "create" ]; then
+  ARGS=()
+  [ -n "$TITLE" ]    && ARGS+=(--title "$TITLE")
+  [ -n "$BODY" ]     && ARGS+=(--body "$BODY")
+  [ -n "$LABEL" ]    && ARGS+=(--label "$LABEL")
+  [ -n "$ASSIGNEE" ] && ARGS+=(--assignee "$ASSIGNEE")
+  if [ "$JSON" = "true" ]; then
+    gh issue create "${ARGS[@]}" --json number,url,title
+  else
+    gh issue create "${ARGS[@]}"
   fi
   exit 0
 fi

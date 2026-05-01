@@ -35,27 +35,33 @@ $ fledge github checks
 
 JSON output is the raw GitHub API response from `repos/{owner}/{repo}/commits/{branch}/check-runs`.
 
-### `fledge github issues [list | view <num>] [OPTIONS]`
+### `fledge github issues [list | view <num> | create] [OPTIONS]`
 
-Browse issues. List by default; `view <number>` shows a specific one.
+Browse and create issues. Lists by default; `view <number>` shows a specific one; `create` opens a new issue.
 
 ```
 $ fledge github issues --state all --limit 5
 $ fledge github issues view 42 --json
+$ fledge github issues create --title "Bug: something broke"
+$ fledge github issues create --title "Feature request" --label enhancement --assignee octocat --json
 ```
 
-Options: `--state {open,closed,all}`, `--limit <N>`, `--label <label>`, `--json`.
+List/view options: `--state {open,closed,all}`, `--limit <N>`, `--label <label>`, `--json`.  
+Create options: `--title <title>`, `--body <body>`, `--label <label>`, `--assignee <login>`, `--json`.
 
-### `fledge github prs [list | view <num>] [OPTIONS]`
+### `fledge github prs [list | view <num> | create] [OPTIONS]`
 
-Browse pull requests. PR creation uses `gh pr create` directly (pure git flow) — this plugin is read-only browsing.
+Browse and create pull requests. Lists by default; `view <number>` shows a specific one; `create` opens a new PR.
 
 ```
 $ fledge github prs --state merged --limit 5
 $ fledge github prs view 256 --json
+$ fledge github prs create --fill
+$ fledge github prs create --title "My feature" --draft --json
 ```
 
-Options: `--state {open,closed,merged,all}`, `--limit <N>`, `--json`.
+List/view options: `--state {open,closed,merged,all}`, `--limit <N>`, `--json`.  
+Create options: `--title <title>`, `--body <body>`, `--base <branch>`, `--draft`, `--fill`, `--json`.
 
 ## Why a plugin?
 

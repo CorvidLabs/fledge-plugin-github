@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
-# fledge-github-prs — list and view GitHub pull requests via the gh CLI.
-# Invoked via: fledge github prs [view <num> | list] [OPTIONS]
+# fledge-github-prs — list, view, and create GitHub pull requests via the gh CLI.
+# Invoked via: fledge github prs [create | view <num> | list] [OPTIONS]
 set -euo pipefail
 
 ACTION="list"
 NUMBER=""
 STATE="open"
 LIMIT="20"
+TITLE=""
+BODY=""
+BASE=""
+DRAFT=false
+FILL=false
 JSON=false
 
 if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
@@ -19,6 +24,10 @@ if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
         shift
       fi
       ;;
+    create)
+      ACTION="create"
+      shift
+      ;;
     list)
       ACTION="list"
       shift
@@ -28,26 +37,42 @@ fi
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -s|--state)  STATE="${2:-}"; shift 2;;
-    -l|--limit)  LIMIT="${2:-}"; shift 2;;
-    --json)      JSON=true; shift;;
+    -s|--state)   STATE="${2:-}"; shift 2;;
+    -l|--limit)   LIMIT="${2:-}"; shift 2;;
+    -t|--title)   TITLE="${2:-}"; shift 2;;
+    -b|--body)    BODY="${2:-}"; shift 2;;
+    --base)       BASE="${2:-}"; shift 2;;
+    --draft)      DRAFT=true; shift;;
+    --fill)       FILL=true; shift;;
+    --json)       JSON=true; shift;;
     -h|--help)
       cat <<'EOF'
-fledge github prs — list and view GitHub pull requests
+fledge github prs — list, view, and create GitHub pull requests
 
 USAGE:
   fledge github prs [list]                List open PRs (default)
   fledge github prs view <NUMBER>         View a specific PR
+  fledge github prs create                Create a new PR
 
-OPTIONS:
+LIST / VIEW OPTIONS:
   -s, --state <STATE>   open | closed | merged | all  (default: open)
   -l, --limit <N>       Maximum results (default: 20)
       --json            Output JSON
+
+CREATE OPTIONS:
+  -t, --title <TITLE>   PR title
+  -b, --body <BODY>     PR body
+      --base <BRANCH>   Base branch (default: repo default)
+      --draft           Open as draft PR
+      --fill            Infer title/body from commits
+      --json            Output JSON (number, url, title)
 
 EXAMPLES:
   fledge github prs
   fledge github prs --state merged --limit 5
   fledge github prs view 256 --json
+  fledge github prs create --fill
+  fledge github prs create --title "My feature" --draft
 EOF
       exit 0
       ;;
@@ -72,6 +97,21 @@ if [ "$ACTION" = "view" ]; then
     gh pr view "$NUMBER" --json number,title,state,author,body,labels,createdAt,updatedAt,url,baseRefName,headRefName,isDraft,mergeable,statusCheckRollup
   else
     gh pr view "$NUMBER"
+  fi
+  exit 0
+fi
+
+if [ "$ACTION" = "create" ]; then
+  ARGS=()
+  [ -n "$TITLE" ] && ARGS+=(--title "$TITLE")
+  [ -n "$BODY" ]  && ARGS+=(--body "$BODY")
+  [ -n "$BASE" ]  && ARGS+=(--base "$BASE")
+  [ "$DRAFT" = "true" ] && ARGS+=(--draft)
+  [ "$FILL" = "true" ]  && ARGS+=(--fill)
+  if [ "$JSON" = "true" ]; then
+    gh pr create "${ARGS[@]}" --json number,url,title
+  else
+    gh pr create "${ARGS[@]}"
   fi
   exit 0
 fi
