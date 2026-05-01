@@ -13,6 +13,13 @@ BASE=""
 DRAFT=false
 FILL=false
 JSON=false
+AI=false
+
+# ANSI color codes
+BLUE='\033[0;34m'
+BOLD='\033[1m'
+YELLOW='\033[0;33m'
+RESET='\033[0m'
 
 if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
   case "$1" in
@@ -45,6 +52,7 @@ while [ $# -gt 0 ]; do
     --draft)      DRAFT=true; shift;;
     --fill)       FILL=true; shift;;
     --json)       JSON=true; shift;;
+    --ai)         AI=true; shift;;
     -h|--help)
       cat <<'EOF'
 fledge github prs — list, view, and create GitHub pull requests
@@ -65,6 +73,7 @@ CREATE OPTIONS:
       --base <BRANCH>   Base branch (default: repo default)
       --draft           Open as draft PR
       --fill            Infer title/body from commits
+      --ai              Generate title and body using AI (fledge ask)
       --json            Output JSON (number, url, title)
 
 EXAMPLES:
@@ -73,6 +82,8 @@ EXAMPLES:
   fledge github prs view 256 --json
   fledge github prs create --fill
   fledge github prs create --title "My feature" --draft
+  fledge github prs create --ai
+  fledge github prs create --ai --draft
 EOF
       exit 0
       ;;
@@ -102,6 +113,148 @@ if [ "$ACTION" = "view" ]; then
 fi
 
 if [ "$ACTION" = "create" ]; then
+
+  if [ "$AI" = "true" ]; then
+    # Check fledge is available; fall back gracefully if not
+    if ! command -v fledge >/dev/null 2>&1; then
+      echo "fledge github prs: warning: 'fledge' not found on PATH — skipping AI generation." >&2
+      AI=false
+    fi
+  fi
+
+  if [ "$AI" = "true" ]; then
+    # Detect base branch
+    DETECTED_BASE=""
+    if [ -n "$BASE" ]; then
+      DETECTED_BASE="$BASE"
+    else
+      DETECTED_BASE="$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name' 2>/dev/null || true)"
+      if [ -z "$DETECTED_BASE" ]; then
+        DETECTED_BASE="main"
+      fi
+    fi
+
+    # Get current branch
+    CURRENT_BRANCH="$(git branch --show-current 2>/dev/null || true)"
+    if [ -z "$CURRENT_BRANCH" ]; then
+      echo "fledge github prs: could not determine current branch." >&2
+      exit 1
+    fi
+
+    # Collect git context
+    COMMITS="$(git log "${DETECTED_BASE}..HEAD" --oneline 2>/dev/null | head -30 || true)"
+    if [ -z "$COMMITS" ]; then
+      echo "fledge github prs: no commits found between '${DETECTED_BASE}' and HEAD. Nothing to create a PR from." >&2
+      exit 1
+    fi
+
+    DIFF_STAT="$(git diff "${DETECTED_BASE}..HEAD" --stat 2>/dev/null || true)"
+    DIFF_FULL="$(git diff "${DETECTED_BASE}..HEAD" 2>/dev/null || true)"
+    # Truncate diff to ~4000 chars
+    DIFF_TRUNCATED="${DIFF_FULL:0:4000}"
+    if [ "${#DIFF_FULL}" -gt 4000 ]; then
+      DIFF_TRUNCATED="${DIFF_TRUNCATED}
+... (diff truncated)"
+    fi
+
+    # Build prompt
+    AI_PROMPT="You are helping write a GitHub pull request.
+
+Branch: ${CURRENT_BRANCH}
+Base: ${DETECTED_BASE}
+
+Commits:
+${COMMITS}
+
+Diff stat:
+${DIFF_STAT}
+
+Diff (truncated):
+${DIFF_TRUNCATED}
+
+Write a pull request title and body for this branch.
+
+Rules:
+- Line 1: the PR title only — plain text, no markdown heading prefix (no leading # or *)
+- Line 2: blank
+- Lines 3+: the PR body in markdown (summary, motivation, key changes; use bullet points where helpful)
+
+Output only the title and body. No preamble, no meta-commentary."
+
+    echo "Generating PR title and body with AI..." >&2
+
+    AI_OUTPUT="$(fledge ask --no-spec-index "$AI_PROMPT" 2>/dev/null || true)"
+
+    if [ -z "$AI_OUTPUT" ]; then
+      echo "fledge github prs: AI generation returned empty output. Continuing without AI." >&2
+      AI=false
+    fi
+  fi
+
+  if [ "$AI" = "true" ]; then
+    # Parse: TITLE = first line stripped of leading # and spaces
+    AI_TITLE="$(printf '%s\n' "$AI_OUTPUT" | head -1 | sed 's/^[# ]*//')"
+    # BODY = everything from line 3+
+    AI_BODY="$(printf '%s\n' "$AI_OUTPUT" | tail -n +3)"
+
+    # Only fill in what the user did not already provide
+    if [ -z "$TITLE" ]; then
+      TITLE="$AI_TITLE"
+    fi
+    if [ -z "$BODY" ]; then
+      BODY="$AI_BODY"
+    fi
+
+    # Interactive review loop (reads from /dev/tty for non-interactive safety)
+    while true; do
+      # Show colored preview box
+      printf '\n'
+      printf "${BLUE}╔══════════════════════════════════════════════════════════╗${RESET}\n"
+      printf "${BLUE}║${RESET}  ${BOLD}PR Preview${RESET}\n"
+      printf "${BLUE}╠══════════════════════════════════════════════════════════╣${RESET}\n"
+      printf "${BLUE}║${RESET}  ${BOLD}Title:${RESET} %s\n" "$TITLE"
+      printf "${BLUE}╠══════════════════════════════════════════════════════════╣${RESET}\n"
+      printf "${BLUE}║${RESET}  ${BOLD}Body:${RESET}\n"
+      while IFS= read -r bline; do
+        printf "${BLUE}║${RESET}  %s\n" "$bline"
+      done <<< "$BODY"
+      printf "${BLUE}╚══════════════════════════════════════════════════════════╝${RESET}\n"
+      printf '\n'
+
+      printf "${YELLOW}[c]${RESET}onfirm  ${YELLOW}[e]${RESET}dit  ${YELLOW}[a]${RESET}bort > "
+      CHOICE=""
+      read -r CHOICE </dev/tty || true
+      CHOICE="${CHOICE:-c}"
+
+      case "$CHOICE" in
+        c|confirm|"")
+          break
+          ;;
+        e|edit)
+          TMPFILE="$(mktemp /tmp/fledge-pr-XXXXXX.md)"
+          printf '%s\n\n%s\n' "$TITLE" "$BODY" > "$TMPFILE"
+          "${EDITOR:-vi}" "$TMPFILE" </dev/tty >/dev/tty
+          # Re-read title/body from file
+          NEW_TITLE="$(head -1 "$TMPFILE" | sed 's/^[# ]*//')"
+          # Body = everything from line 3+
+          NEW_BODY="$(tail -n +3 "$TMPFILE")"
+          rm -f "$TMPFILE"
+          TITLE="$NEW_TITLE"
+          BODY="$NEW_BODY"
+          # Loop back to show updated preview
+          ;;
+        a|abort)
+          echo "Aborted."
+          exit 0
+          ;;
+        *)
+          printf "Unknown choice '%s'. Enter c, e, or a.\n" "$CHOICE" >&2
+          ;;
+      esac
+    done
+  fi
+
+  # Build gh pr create argument list
   ARGS=()
   [ -n "$TITLE" ] && ARGS+=(--title "$TITLE")
   [ -n "$BODY" ]  && ARGS+=(--body "$BODY")
