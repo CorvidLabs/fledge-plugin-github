@@ -57,11 +57,15 @@ Browse and create pull requests. Lists by default; `view <number>` shows a speci
 $ fledge github prs --state merged --limit 5
 $ fledge github prs view 256 --json
 $ fledge github prs create --fill
+$ fledge github prs create --ai
+$ fledge github prs create --ai --draft
 $ fledge github prs create --title "My feature" --draft --json
 ```
 
 List/view options: `--state {open,closed,merged,all}`, `--limit <N>`, `--json`.  
-Create options: `--title <title>`, `--body <body>`, `--base <branch>`, `--draft`, `--fill`, `--json`.
+Create options: `--title <title>`, `--body <body>`, `--base <branch>`, `--draft`, `--fill`, `--ai`, `--json`.
+
+`--ai` generates a PR title and body by sending your commits and diff to `fledge ask`. It shows a preview and lets you confirm, edit, or abort before creating the PR.
 
 ## Why a plugin?
 
