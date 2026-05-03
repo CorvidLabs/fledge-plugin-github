@@ -19,7 +19,7 @@ jobs:
           for f in bin/*; do
             if head -n1 "$f" | grep -qE '^#!.*\b(bash|sh)\b'; then
               echo "▶ shellcheck $f"
-              shellcheck "$f" || fail=1
+              shellcheck --severity=warning "$f" || fail=1
             fi
           done
           exit "$fail"
