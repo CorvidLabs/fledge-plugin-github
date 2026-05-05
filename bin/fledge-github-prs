@@ -16,10 +16,10 @@ JSON=false
 AI=false
 
 # ANSI color codes
-BLUE='\033[0;34m'
-BOLD='\033[1m'
-YELLOW='\033[0;33m'
-RESET='\033[0m'
+BLUE=$'\033[0;34m'
+BOLD=$'\033[1m'
+YELLOW=$'\033[0;33m'
+RESET=$'\033[0m'
 
 if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
   case "$1" in
@@ -209,19 +209,19 @@ Output only the title and body. No preamble, no meta-commentary."
     while true; do
       # Show colored preview box
       printf '\n'
-      printf "${BLUE}╔══════════════════════════════════════════════════════════╗${RESET}\n"
-      printf "${BLUE}║${RESET}  ${BOLD}PR Preview${RESET}\n"
-      printf "${BLUE}╠══════════════════════════════════════════════════════════╣${RESET}\n"
-      printf "${BLUE}║${RESET}  ${BOLD}Title:${RESET} %s\n" "$TITLE"
-      printf "${BLUE}╠══════════════════════════════════════════════════════════╣${RESET}\n"
-      printf "${BLUE}║${RESET}  ${BOLD}Body:${RESET}\n"
+      printf '%s╔══════════════════════════════════════════════════════════╗%s\n' "$BLUE" "$RESET"
+      printf '%s║%s  %sPR Preview%s\n' "$BLUE" "$RESET" "$BOLD" "$RESET"
+      printf '%s╠══════════════════════════════════════════════════════════╣%s\n' "$BLUE" "$RESET"
+      printf '%s║%s  %sTitle:%s %s\n' "$BLUE" "$RESET" "$BOLD" "$RESET" "$TITLE"
+      printf '%s╠══════════════════════════════════════════════════════════╣%s\n' "$BLUE" "$RESET"
+      printf '%s║%s  %sBody:%s\n' "$BLUE" "$RESET" "$BOLD" "$RESET"
       while IFS= read -r bline; do
-        printf "${BLUE}║${RESET}  %s\n" "$bline"
+        printf '%s║%s  %s\n' "$BLUE" "$RESET" "$bline"
       done <<< "$BODY"
-      printf "${BLUE}╚══════════════════════════════════════════════════════════╝${RESET}\n"
+      printf '%s╚══════════════════════════════════════════════════════════╝%s\n' "$BLUE" "$RESET"
       printf '\n'
 
-      printf "${YELLOW}[c]${RESET}onfirm  ${YELLOW}[e]${RESET}dit  ${YELLOW}[a]${RESET}bort > "
+      printf '%s[c]%sonfirm  %s[e]%sdit  %s[a]%sbort > ' "$YELLOW" "$RESET" "$YELLOW" "$RESET" "$YELLOW" "$RESET"
       CHOICE=""
       read -r CHOICE </dev/tty || true
       CHOICE="${CHOICE:-c}"

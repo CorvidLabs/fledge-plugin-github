@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   shellcheck:
     name: ShellCheck
@@ -20,6 +23,23 @@ jobs:
             if head -n1 "$f" | grep -qE '^#!.*\b(bash|sh)\b'; then
               echo "▶ shellcheck $f"
               shellcheck --severity=warning "$f" || fail=1
+            fi
+          done
+          exit "$fail"
+
+  syntax:
+    name: Bash syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check bash -n on all scripts
+        run: |
+          shopt -s nullglob
+          fail=0
+          for f in bin/*; do
+            if head -n1 "$f" | grep -qE '^#!.*\bbash\b'; then
+              echo "▶ bash -n $f"
+              bash -n "$f" || fail=1
             fi
           done
           exit "$fail"

@@ -1,5 +1,7 @@
 # fledge-plugin-github
 
+[![CI](https://github.com/CorvidLabs/fledge-plugin-github/actions/workflows/ci.yml/badge.svg)](https://github.com/CorvidLabs/fledge-plugin-github/actions/workflows/ci.yml)
+
 GitHub commands for [fledge](https://github.com/CorvidLabs/fledge) — view CI checks, issues, and pull requests through the `gh` CLI.
 
 These commands lived in fledge core through v0.14, then moved to this plugin as part of the v0.15 tight-core refactor. The plugin keeps fledge's binary lean for users on GitLab, Gitea, or self-hosted Git, and lets the GitHub-specific surface evolve independently.

@@ -64,7 +64,7 @@ if [ -z "$REPO" ]; then
   exit 1
 fi
 
-DATA="$(gh api "repos/${REPO}/commits/${BRANCH}/check-runs" --paginate=false 2>/dev/null || true)"
+DATA="$(gh api "repos/${REPO}/commits/${BRANCH}/check-runs" 2>/dev/null || true)"
 if [ -z "$DATA" ]; then
   echo "fledge github checks: failed to fetch check runs for ${REPO}@${BRANCH}." >&2
   exit 1
