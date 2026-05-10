@@ -7,6 +7,8 @@ license = "MIT"
 
 [[commands]]
 name = "github"
-description = "GitHub commands (checks, issues, prs) via the gh CLI"
+description = "GitHub commands via the gh CLI. Subcommands: checks (CI status), issues (list/view <num>), prs (list/view <num>/create)."
 binary = "bin/fledge-github"
-
+args = [
+    { name = "args", type = "string", required = true, description = "Subcommand and options, e.g. 'prs view 208', 'prs list --state open', 'issues list', 'issues view 42', 'checks'" },
+]
