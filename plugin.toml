@@ -1,13 +1,13 @@
 [plugin]
 name = "fledge-plugin-github"
-version = "0.4.1"
-description = "GitHub commands for fledge — view CI checks, issues, and pull requests via the gh CLI"
+version = "0.5.0"
+description = "GitHub commands for fledge — view CI checks, issues, pull requests, and poll for daemon events via the gh CLI"
 author = "0xLeif"
 license = "MIT"
 
 [[commands]]
 name = "github"
-description = "GitHub commands via the gh CLI. Subcommands: checks (CI status), issues (list/view <num>), prs (list/view <num>/create)."
+description = "GitHub commands via the gh CLI. Subcommands: checks (CI status), issues (list/view <num>), prs (list/view <num>/create), poll (daemon event polling)."
 binary = "bin/fledge-github"
 args = [
     { name = "args", type = "string", required = true, description = "Subcommand and options, e.g. 'prs view 208', 'prs list --state open', 'issues list', 'issues view 42', 'checks'" },

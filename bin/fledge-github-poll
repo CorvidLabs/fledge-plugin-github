@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+# fledge-github-poll — poll GitHub for new issues and PRs since a timestamp.
+# Outputs JSON array of Event objects matching the merlin daemon Event schema.
+# Invoked via: fledge github poll [OPTIONS]
+set -euo pipefail
+
+REPO=""
+SINCE=""
+LIMIT="30"
+TYPES="issues,prs"
+LABEL=""
+STATE="open"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --repo)    REPO="${2:-}"; shift 2;;
+    --since)   SINCE="${2:-}"; shift 2;;
+    --limit)   LIMIT="${2:-}"; shift 2;;
+    --types)   TYPES="${2:-}"; shift 2;;
+    --label)   LABEL="${2:-}"; shift 2;;
+    --state)   STATE="${2:-}"; shift 2;;
+    -h|--help)
+      cat <<'EOF'
+fledge github poll — poll for new issues and PRs as daemon events
+
+USAGE:
+  fledge github poll [OPTIONS]
+
+OPTIONS:
+  --repo <OWNER/REPO>   Repository to poll (default: current repo)
+  --since <ID>          Only return events after this ID (e.g. "issues/42")
+  --limit <N>           Maximum events per type (default: 30)
+  --types <TYPES>       Comma-separated: issues,prs (default: both)
+  --label <LABEL>       Filter by label
+  --state <STATE>       open | closed | all (default: open)
+
+OUTPUT:
+  JSON array of Event objects:
+    { source, repo, event_type, id, title, labels, author, body, url, timestamp }
+
+EXAMPLES:
+  fledge github poll --repo CorvidLabs/merlin
+  fledge github poll --since issues/100
+  fledge github poll --types issues --label bug
+EOF
+      exit 0
+      ;;
+    *)
+      echo "fledge github poll: unknown argument '$1'" >&2
+      exit 64
+      ;;
+  esac
+done
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo "fledge github poll: gh CLI is not installed. https://cli.github.com/" >&2
+  exit 127
+fi
+
+REPO_ARGS=()
+if [ -n "$REPO" ]; then
+  REPO_ARGS=(--repo "$REPO")
+fi
+
+# Detect repo name for the output
+if [ -n "$REPO" ]; then
+  REPO_NAME="$REPO"
+else
+  REPO_NAME="$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null || echo 'unknown')"
+fi
+
+# Collect all raw JSON into temp files and merge with python3 at the end
+TMPDIR_POLL="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR_POLL"' EXIT
+
+ISSUE_FILE="$TMPDIR_POLL/issues.json"
+PR_FILE="$TMPDIR_POLL/prs.json"
+echo '[]' > "$ISSUE_FILE"
+echo '[]' > "$PR_FILE"
+
+# Poll issues
+if [[ "$TYPES" == *"issues"* ]]; then
+  ISSUE_ARGS=(--state "$STATE" --limit "$LIMIT")
+  if [ -n "$LABEL" ]; then ISSUE_ARGS+=(--label "$LABEL"); fi
+
+  gh issue list "${REPO_ARGS[@]}" "${ISSUE_ARGS[@]}" \
+    --json number,title,state,labels,author,body,createdAt,url > "$ISSUE_FILE" 2>/dev/null || echo '[]' > "$ISSUE_FILE"
+fi
+
+# Poll PRs
+if [[ "$TYPES" == *"prs"* ]]; then
+  PR_ARGS=(--state "$STATE" --limit "$LIMIT")
+  if [ -n "$LABEL" ]; then PR_ARGS+=(--label "$LABEL"); fi
+
+  gh pr list "${REPO_ARGS[@]}" "${PR_ARGS[@]}" \
+    --json number,title,state,labels,author,body,createdAt,url > "$PR_FILE" 2>/dev/null || echo '[]' > "$PR_FILE"
+fi
+
+# Transform and merge using python3
+python3 - "$ISSUE_FILE" "$PR_FILE" "$REPO_NAME" "$SINCE" <<'PYEOF'
+import sys, json
+
+issue_file, pr_file, repo_name, since = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+
+# Parse --since
+since_issue_num = 0
+since_pr_num = 0
+if since:
+    if since.startswith("issues/"):
+        since_issue_num = int(since.split("/")[1])
+    elif since.startswith("pull/"):
+        since_pr_num = int(since.split("/")[1])
+    elif since.isdigit():
+        since_issue_num = int(since)
+        since_pr_num = int(since)
+
+events = []
+
+with open(issue_file) as f:
+    issues = json.load(f)
+for issue in issues:
+    num = issue.get("number", 0)
+    if since_issue_num > 0 and num <= since_issue_num:
+        continue
+    events.append({
+        "source": "github",
+        "repo": repo_name,
+        "event_type": "issue_opened",
+        "id": f"issues/{num}",
+        "title": issue.get("title", ""),
+        "labels": [l.get("name", "") for l in issue.get("labels", [])],
+        "author": issue.get("author", {}).get("login", ""),
+        "body": issue.get("body", ""),
+        "url": issue.get("url", ""),
+        "timestamp": issue.get("createdAt", ""),
+    })
+
+with open(pr_file) as f:
+    prs = json.load(f)
+for pr in prs:
+    num = pr.get("number", 0)
+    if since_pr_num > 0 and num <= since_pr_num:
+        continue
+    events.append({
+        "source": "github",
+        "repo": repo_name,
+        "event_type": "pr_opened",
+        "id": f"pull/{num}",
+        "title": pr.get("title", ""),
+        "labels": [l.get("name", "") for l in pr.get("labels", [])],
+        "author": pr.get("author", {}).get("login", ""),
+        "body": pr.get("body", ""),
+        "url": pr.get("url", ""),
+        "timestamp": pr.get("createdAt", ""),
+    })
+
+# Sort by number (newest first)
+events.sort(key=lambda e: e["id"], reverse=True)
+print(json.dumps(events))
+PYEOF
