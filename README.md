@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/CorvidLabs/fledge-plugin-github/actions/workflows/ci.yml/badge.svg)](https://github.com/CorvidLabs/fledge-plugin-github/actions/workflows/ci.yml)
 
-GitHub commands for [fledge](https://github.com/CorvidLabs/fledge) — view CI checks, issues, and pull requests through the `gh` CLI.
+GitHub commands for [fledge](https://github.com/CorvidLabs/fledge) — view CI checks, issues, pull requests, and poll for daemon events through the `gh` CLI.
 
 These commands lived in fledge core through v0.14, then moved to this plugin as part of the v0.15 tight-core refactor. The plugin keeps fledge's binary lean for users on GitLab, Gitea, or self-hosted Git, and lets the GitHub-specific surface evolve independently.
 
@@ -69,13 +69,27 @@ Create options: `--title <title>`, `--body <body>`, `--base <branch>`, `--draft`
 
 `--ai` generates a PR title and body by sending your commits and diff to `fledge ask`. It shows a preview and lets you confirm, edit, or abort before creating the PR.
 
+### `fledge github poll [OPTIONS]`
+
+Poll for new issues and PRs as structured event objects. Designed for [Merlin](https://github.com/CorvidLabs/merlin) daemon mode — the output matches the daemon `Event` schema.
+
+```
+$ fledge github poll --repo CorvidLabs/merlin --types issues --limit 3
+$ fledge github poll --since issues/100
+$ fledge github poll --types issues --label bug
+```
+
+Options: `--repo <owner/repo>`, `--since <ID>` (e.g. `issues/42`), `--limit <N>`, `--types {issues,prs}`, `--label <label>`, `--state {open,closed,all}`.
+
+Output is a JSON array of event objects with fields: `source`, `repo`, `event_type`, `id`, `title`, `labels`, `author`, `body`, `url`, `timestamp`.
+
 ## Why a plugin?
 
 A flat `checks`/`issues`/`prs` surface bakes "all dev happens on GitHub" into fledge core. A user on GitLab or self-hosted Gitea would carry these as dead weight. Nesting under `fledge github` keeps the namespace honest and lets a future `fledge-plugin-gitlab` register `fledge gitlab ...` alongside it without colliding.
 
 ## Hacking
 
-`bin/fledge-github` is a thin dispatcher; each subcommand is a self-contained POSIX-ish shell script (`bin/fledge-github-checks`, `…-issues`, `…-prs`). The scripts use `gh api` (or `gh issue`/`gh pr`) to talk to GitHub, then format the response — no extra runtime dependencies beyond `gh`, `git`, `jq`, and `awk`.
+`bin/fledge-github` is a thin dispatcher; each subcommand is a self-contained POSIX-ish shell script (`bin/fledge-github-checks`, `…-issues`, `…-prs`, `…-poll`). The scripts use `gh api` (or `gh issue`/`gh pr`) to talk to GitHub, then format the response — no extra runtime dependencies beyond `gh`, `git`, `python3`, and `awk`.
 
 ## License
 

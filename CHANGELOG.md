@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.5.0] - 2026-05-13
+
+### Features
+
+- Add `fledge github poll` subcommand for daemon event polling (#5)
+  - Polls GitHub for new issues and PRs via the `gh` CLI
+  - Outputs JSON array of Event objects matching the Merlin daemon schema
+  - Supports `--since`, `--types`, `--label`, `--repo`, `--limit`, `--state` options
+  - Uses python3 for JSON transformation
+
 ## [v0.2.1] - 2026-04-25
 
 ### Other
