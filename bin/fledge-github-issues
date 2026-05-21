@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# fledge-github-issues — list, view, and create GitHub issues via the gh CLI.
-# Invoked via: fledge github issues [create | view <num> | list] [OPTIONS]
+# fledge-github-issues — list, view, create, comment on, close, and reopen
+# GitHub issues via the gh CLI.
+# Invoked via: fledge github issues [list | view <num> | create | comment <num> |
+#   close <num> | reopen <num>] [OPTIONS]
 set -euo pipefail
 
 ACTION="list"
@@ -12,12 +14,13 @@ TITLE=""
 BODY=""
 ASSIGNEE=""
 JSON=false
+INCLUDE_COMMENTS=false
 
-# First positional arg can be a subcommand: create, view, or list
+# First positional arg can be a subcommand.
 if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
   case "$1" in
-    view)
-      ACTION="view"
+    view|comment|close|reopen)
+      ACTION="$1"
       shift
       if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
         NUMBER="$1"
@@ -44,34 +47,44 @@ while [ $# -gt 0 ]; do
     -b|--body)       BODY="${2:-}"; shift 2;;
     -a|--assignee)   ASSIGNEE="${2:-}"; shift 2;;
     --json)          JSON=true; shift;;
+    --comments)      INCLUDE_COMMENTS=true; shift;;
     -h|--help)
       cat <<'EOF'
-fledge github issues — list, view, and create GitHub issues
+fledge github issues — manage GitHub issues via the gh CLI
 
 USAGE:
-  fledge github issues [list]                List open issues (default)
-  fledge github issues view <NUMBER>         View a specific issue
-  fledge github issues create                Create a new issue
+  fledge github issues [list]                       List open issues (default)
+  fledge github issues view <NUMBER>                View a specific issue
+  fledge github issues create                       Create a new issue
+  fledge github issues comment <NUMBER> -b BODY     Post a comment
+  fledge github issues close <NUMBER>               Close an issue
+  fledge github issues reopen <NUMBER>              Reopen a closed issue
 
 LIST / VIEW OPTIONS:
   -s, --state <STATE>   open | closed | all  (default: open)
   -l, --limit <N>       Maximum results (default: 20)
       --label <LABEL>   Filter by label
       --json            Output JSON
+      --comments        (view) Append the issue's conversation comments
 
 CREATE OPTIONS:
   -t, --title <TITLE>      Issue title
   -b, --body <BODY>        Issue body
-      --label <LABEL>      Attach label (repeatable)
+      --label <LABEL>      Attach label (repeatable on the gh side)
   -a, --assignee <LOGIN>   Assign to user
       --json               Output JSON (number, url, title)
+
+COMMENT OPTIONS:
+  -b, --body <BODY>     Comment body (required)
+      --json            Output JSON (url)
 
 EXAMPLES:
   fledge github issues
   fledge github issues --state all --limit 50
-  fledge github issues view 42 --json
+  fledge github issues view 42 --comments
   fledge github issues create --title "Bug: something broke"
-  fledge github issues create --title "Feature request" --label enhancement --assignee octocat
+  fledge github issues comment 42 -b "Reproduced on 0.3.1 too."
+  fledge github issues close 42
 EOF
       exit 0
       ;;
@@ -87,16 +100,49 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 127
 fi
 
+case "$ACTION" in
+  view|comment|close|reopen)
+    if [ -z "$NUMBER" ]; then
+      echo "fledge github issues: '$ACTION' requires an issue number. Try: fledge github issues $ACTION 42" >&2
+      exit 64
+    fi
+    ;;
+esac
+
 if [ "$ACTION" = "view" ]; then
-  if [ -z "$NUMBER" ]; then
-    echo "fledge github issues: 'view' requires an issue number. Try: fledge github issues view 42" >&2
-    exit 64
-  fi
   if [ "$JSON" = "true" ]; then
     gh issue view "$NUMBER" --json number,title,state,author,body,labels,createdAt,updatedAt,url,assignees
   else
     gh issue view "$NUMBER"
   fi
+  if [ "$JSON" != "true" ] && [ "$INCLUDE_COMMENTS" = "true" ]; then
+    printf '\n--- Comments ---\n'
+    gh issue view "$NUMBER" --comments
+  fi
+  exit 0
+fi
+
+if [ "$ACTION" = "comment" ]; then
+  if [ -z "$BODY" ]; then
+    echo "fledge github issues: 'comment' requires --body" >&2
+    exit 64
+  fi
+  if [ "$JSON" = "true" ]; then
+    URL="$(gh issue comment "$NUMBER" -b "$BODY")"
+    printf '{"url":"%s"}\n' "$URL"
+  else
+    gh issue comment "$NUMBER" -b "$BODY"
+  fi
+  exit 0
+fi
+
+if [ "$ACTION" = "close" ]; then
+  gh issue close "$NUMBER"
+  exit 0
+fi
+
+if [ "$ACTION" = "reopen" ]; then
+  gh issue reopen "$NUMBER"
   exit 0
 fi
 

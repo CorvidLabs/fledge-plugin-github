@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# fledge-github-prs — list, view, and create GitHub pull requests via the gh CLI.
-# Invoked via: fledge github prs [create | view <num> | list] [OPTIONS]
+# fledge-github-prs — list, view, create, comment on, review, merge, close,
+# and reopen GitHub pull requests via the gh CLI.
+# Invoked via: fledge github prs [list | view <num> | create | comment <num> |
+#   review <num> | merge <num> | close <num> | reopen <num>] [OPTIONS]
 set -euo pipefail
 
 ACTION="list"
@@ -14,6 +16,10 @@ DRAFT=false
 FILL=false
 JSON=false
 AI=false
+INCLUDE_DIFF=false
+INCLUDE_COMMENTS=false
+MERGE_METHOD="squash"
+REVIEW_KIND=""
 
 # ANSI color codes
 BLUE=$'\033[0;34m'
@@ -21,10 +27,12 @@ BOLD=$'\033[1m'
 YELLOW=$'\033[0;33m'
 RESET=$'\033[0m'
 
+# Parse positional subcommand. `view`, `comment`, `review`, `merge`, `close`,
+# and `reopen` all take a number; `create` and `list` don't.
 if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
   case "$1" in
-    view)
-      ACTION="view"
+    view|comment|review|merge|close|reopen)
+      ACTION="$1"
       shift
       if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
         NUMBER="$1"
@@ -44,28 +52,43 @@ fi
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -s|--state)   STATE="${2:-}"; shift 2;;
-    -l|--limit)   LIMIT="${2:-}"; shift 2;;
-    -t|--title)   TITLE="${2:-}"; shift 2;;
-    -b|--body)    BODY="${2:-}"; shift 2;;
-    --base)       BASE="${2:-}"; shift 2;;
-    --draft)      DRAFT=true; shift;;
-    --fill)       FILL=true; shift;;
-    --json)       JSON=true; shift;;
-    --ai)         AI=true; shift;;
+    -s|--state)         STATE="${2:-}"; shift 2;;
+    -l|--limit)         LIMIT="${2:-}"; shift 2;;
+    -t|--title)         TITLE="${2:-}"; shift 2;;
+    -b|--body)          BODY="${2:-}"; shift 2;;
+    --base)             BASE="${2:-}"; shift 2;;
+    --draft)            DRAFT=true; shift;;
+    --fill)             FILL=true; shift;;
+    --json)             JSON=true; shift;;
+    --ai)               AI=true; shift;;
+    --diff)             INCLUDE_DIFF=true; shift;;
+    --comments)         INCLUDE_COMMENTS=true; shift;;
+    --squash)           MERGE_METHOD="squash"; shift;;
+    --merge)            MERGE_METHOD="merge"; shift;;
+    --rebase)           MERGE_METHOD="rebase"; shift;;
+    --approve)          REVIEW_KIND="approve"; shift;;
+    --request-changes)  REVIEW_KIND="request-changes"; shift;;
+    --comment-review)   REVIEW_KIND="comment"; shift;;
     -h|--help)
       cat <<'EOF'
-fledge github prs — list, view, and create GitHub pull requests
+fledge github prs — manage GitHub pull requests via the gh CLI
 
 USAGE:
-  fledge github prs [list]                List open PRs (default)
-  fledge github prs view <NUMBER>         View a specific PR
-  fledge github prs create                Create a new PR
+  fledge github prs [list]                          List open PRs (default)
+  fledge github prs view <NUMBER>                   View a specific PR
+  fledge github prs create                          Create a new PR
+  fledge github prs comment <NUMBER> -b BODY        Post a comment
+  fledge github prs review <NUMBER> ...             Submit a review
+  fledge github prs merge <NUMBER> [--squash|...]   Merge the PR
+  fledge github prs close <NUMBER>                  Close without merging
+  fledge github prs reopen <NUMBER>                 Reopen a closed PR
 
 LIST / VIEW OPTIONS:
   -s, --state <STATE>   open | closed | merged | all  (default: open)
   -l, --limit <N>       Maximum results (default: 20)
       --json            Output JSON
+      --diff            (view) Append the unified diff
+      --comments        (view) Append PR conversation comments + reviews
 
 CREATE OPTIONS:
   -t, --title <TITLE>   PR title
@@ -76,14 +99,33 @@ CREATE OPTIONS:
       --ai              Generate title and body using AI (fledge ask)
       --json            Output JSON (number, url, title)
 
+COMMENT OPTIONS:
+  -b, --body <BODY>     Comment body (required)
+      --json            Output JSON (url)
+
+REVIEW OPTIONS:
+  One of:
+      --approve           Approve the PR
+      --request-changes   Request changes (requires --body)
+      --comment-review    Submit a review-comment (no approval/blocking)
+  -b, --body <BODY>     Review body (required for --request-changes /
+                        --comment-review, optional for --approve)
+
+MERGE OPTIONS:
+      --squash          Squash-merge (default)
+      --merge           Merge commit
+      --rebase          Rebase-merge
+
 EXAMPLES:
   fledge github prs
   fledge github prs --state merged --limit 5
-  fledge github prs view 256 --json
+  fledge github prs view 256 --diff --comments
   fledge github prs create --fill
-  fledge github prs create --title "My feature" --draft
-  fledge github prs create --ai
-  fledge github prs create --ai --draft
+  fledge github prs comment 256 -b "Looks good — one nit inline."
+  fledge github prs review 256 --approve
+  fledge github prs review 256 --request-changes -b "See comments."
+  fledge github prs merge 256 --squash
+  fledge github prs close 256
 EOF
       exit 0
       ;;
@@ -99,16 +141,90 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 127
 fi
 
+# All non-list actions except 'create' need a number.
+case "$ACTION" in
+  view|comment|review|merge|close|reopen)
+    if [ -z "$NUMBER" ]; then
+      echo "fledge github prs: '$ACTION' requires a PR number. Try: fledge github prs $ACTION 256" >&2
+      exit 64
+    fi
+    ;;
+esac
+
 if [ "$ACTION" = "view" ]; then
-  if [ -z "$NUMBER" ]; then
-    echo "fledge github prs: 'view' requires a PR number. Try: fledge github prs view 256" >&2
-    exit 64
-  fi
   if [ "$JSON" = "true" ]; then
     gh pr view "$NUMBER" --json number,title,state,author,body,labels,createdAt,updatedAt,url,baseRefName,headRefName,isDraft,mergeable,statusCheckRollup
   else
     gh pr view "$NUMBER"
   fi
+  # Optional appendices below the main view block. Each section is
+  # gated by its own flag and separated by a blank line so the output
+  # reads like a single document. `--json` skips both — JSON callers
+  # should fetch what they need with structured calls instead of
+  # parsing concatenated streams.
+  if [ "$JSON" != "true" ] && [ "$INCLUDE_COMMENTS" = "true" ]; then
+    printf '\n--- Comments + Reviews ---\n'
+    gh pr view "$NUMBER" --comments
+  fi
+  if [ "$JSON" != "true" ] && [ "$INCLUDE_DIFF" = "true" ]; then
+    printf '\n--- Diff ---\n'
+    gh pr diff "$NUMBER"
+  fi
+  exit 0
+fi
+
+if [ "$ACTION" = "comment" ]; then
+  if [ -z "$BODY" ]; then
+    echo "fledge github prs: 'comment' requires --body" >&2
+    exit 64
+  fi
+  if [ "$JSON" = "true" ]; then
+    # gh pr comment prints the comment URL to stdout when -b is used;
+    # wrap that in a tiny JSON shape so callers can parse it uniformly.
+    URL="$(gh pr comment "$NUMBER" -b "$BODY")"
+    printf '{"url":"%s"}\n' "$URL"
+  else
+    gh pr comment "$NUMBER" -b "$BODY"
+  fi
+  exit 0
+fi
+
+if [ "$ACTION" = "review" ]; then
+  if [ -z "$REVIEW_KIND" ]; then
+    echo "fledge github prs: 'review' requires --approve, --request-changes, or --comment-review" >&2
+    exit 64
+  fi
+  if [ "$REVIEW_KIND" != "approve" ] && [ -z "$BODY" ]; then
+    echo "fledge github prs: '--$REVIEW_KIND' requires --body" >&2
+    exit 64
+  fi
+  ARGS=("$NUMBER")
+  case "$REVIEW_KIND" in
+    approve)         ARGS+=(--approve);;
+    request-changes) ARGS+=(--request-changes);;
+    comment)         ARGS+=(--comment);;
+  esac
+  [ -n "$BODY" ] && ARGS+=(--body "$BODY")
+  gh pr review "${ARGS[@]}"
+  exit 0
+fi
+
+if [ "$ACTION" = "merge" ]; then
+  case "$MERGE_METHOD" in
+    squash) gh pr merge "$NUMBER" --squash;;
+    merge)  gh pr merge "$NUMBER" --merge;;
+    rebase) gh pr merge "$NUMBER" --rebase;;
+  esac
+  exit 0
+fi
+
+if [ "$ACTION" = "close" ]; then
+  gh pr close "$NUMBER"
+  exit 0
+fi
+
+if [ "$ACTION" = "reopen" ]; then
+  gh pr reopen "$NUMBER"
   exit 0
 fi
 
