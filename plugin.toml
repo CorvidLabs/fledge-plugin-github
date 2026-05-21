@@ -1,14 +1,14 @@
 [plugin]
 name = "fledge-plugin-github"
-version = "0.5.0"
-description = "GitHub commands for fledge — view CI checks, issues, pull requests, and poll for daemon events via the gh CLI"
+version = "0.6.0"
+description = "GitHub commands for fledge — list/view/create/comment/review/merge PRs, list/view/create/comment/close issues, read repo files, view CI checks, and poll for daemon events via the gh CLI"
 author = "0xLeif"
 license = "MIT"
 
 [[commands]]
 name = "github"
-description = "GitHub commands via the gh CLI. Subcommands: checks (CI status), issues (list/view <num>), prs (list/view <num>/create), poll (daemon event polling)."
+description = "GitHub commands via the gh CLI. Subcommands: prs (list/view <num> [--diff --comments]/create/comment <num> -b BODY/review <num> --approve|--request-changes|--comment-review -b BODY/merge <num>/close <num>/reopen <num>), issues (list/view <num> [--comments]/create/comment <num> -b BODY/close <num>/reopen <num>), repo (view / file <path> [--ref REF] [-R OWNER/NAME]), checks (CI status), poll (daemon event polling)."
 binary = "bin/fledge-github"
 args = [
-    { name = "args", type = "string", required = true, description = "Subcommand and options, e.g. 'prs view 208', 'prs list --state open', 'issues list', 'issues view 42', 'checks'" },
+    { name = "args", type = "string", required = true, description = "Subcommand and options, e.g. 'prs view 208 --diff', 'prs comment 208 -b \"LGTM\"', 'issues create -t \"Bug\" -b \"...\"', 'repo file CHANGELOG.md -R CorvidLabs/merlin'" },
 ]

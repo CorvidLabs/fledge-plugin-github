@@ -24,8 +24,9 @@ USAGE:
 
 SUBCOMMANDS:
   checks    View CI/CD check status for a branch
-  issues    List and view GitHub issues
-  prs       List and view GitHub pull requests
+  issues    List, view, create, comment on, close, and reopen GitHub issues
+  prs       List, view, create, comment on, review, merge, close, and reopen pull requests
+  repo      View repo metadata and read file contents at a ref
   poll      Poll for new issues/PRs as daemon events (JSON)
 
 Run `fledge github <SUBCOMMAND> --help` for subcommand-specific options.
@@ -41,7 +42,7 @@ SUB="$1"
 shift
 
 case "$SUB" in
-  checks|issues|prs|poll)
+  checks|issues|prs|poll|repo)
     exec "${DIR}/fledge-github-${SUB}" "$@"
     ;;
   -h|--help|help)
