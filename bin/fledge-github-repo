@@ -20,6 +20,15 @@ if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
     view)
       ACTION="view"
       shift
+      # gh's native `gh repo view <OWNER/NAME>` takes the repo as a
+      # positional. Mirror that so the agent can call either
+      # `repo view CorvidLabs/x` or `repo view -R CorvidLabs/x` and
+      # land in the same place. Only accept it when it looks like
+      # owner/name (i.e. contains a /) — bare words are typos.
+      if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ] && [[ "$1" == */* ]]; then
+        REPO="$1"
+        shift
+      fi
       ;;
     file)
       ACTION="file"
@@ -42,18 +51,25 @@ while [ $# -gt 0 ]; do
 fledge github repo — read repo metadata and file contents via the gh CLI
 
 USAGE:
-  fledge github repo [view]                      View repo metadata (default)
-  fledge github repo file <PATH>                 Read a file from the repo
+  fledge github repo [view] [OWNER/NAME]         View repo metadata (default)
+  fledge github repo file <PATH>                 Read a file OR list a directory
 
 OPTIONS:
-  -R, --repo <OWNER/NAME>   Target repo (default: current working repo)
+  -R, --repo <OWNER/NAME>   Target repo (default: current working repo).
+                            view also accepts OWNER/NAME as a positional.
   -r, --ref <REF>           Branch / tag / SHA (file only; default: repo default)
       --json                Output JSON
 
+The `file` action returns the file's decoded contents when PATH is a
+file, or a tab-separated listing (name<TAB>type<TAB>size) when PATH
+is a directory — same command, agent can browse and read with one tool.
+
 EXAMPLES:
   fledge github repo
-  fledge github repo view -R CorvidLabs/merlin
+  fledge github repo view CorvidLabs/merlin
+  fledge github repo view -R CorvidLabs/merlin --json
   fledge github repo file CHANGELOG.md
+  fledge github repo file Sources -R CorvidLabs/corvid-verify
   fledge github repo file README.md -R CorvidLabs/fledge-plugin-github
   fledge github repo file Cargo.toml -r v0.3.0
 EOF
@@ -114,15 +130,37 @@ if [ "$ACTION" = "file" ]; then
     ENDPOINT="${ENDPOINT}?ref=${REF}"
   fi
 
+  # The contents API returns:
+  #   - an object with .content (base64-encoded) when PATH is a file,
+  #   - an array of entries when PATH is a directory.
+  # Previously we blindly piped .content into base64(1), which croaked
+  # on dirs with `expected an object but got: array`. Probe the type
+  # once, then render appropriately so the agent can use the SAME
+  # command for both file and dir lookups.
   if [ "$JSON" = "true" ]; then
     # Pass through the raw API response — caller decodes content
     # themselves if they want the base64.
     gh api "$ENDPOINT"
-  else
-    # Default: emit just the decoded file contents. The contents API
-    # returns base64-encoded content for files; the .content field
-    # holds it with embedded newlines that base64(1) tolerates.
-    gh api "$ENDPOINT" --jq '.content' | base64 -d
+    exit 0
   fi
+
+  RAW="$(gh api "$ENDPOINT")"
+  KIND="$(printf '%s' "$RAW" | jq -r 'if type == "array" then "dir" elif type == "object" and .type == "file" then "file" else "other" end')"
+  case "$KIND" in
+    file)
+      printf '%s' "$RAW" | jq -r '.content' | base64 -d
+      ;;
+    dir)
+      # Directory: print a brief listing. One line per entry, sorted
+      # like `ls -F` (trailing / for dirs). The agent can then call
+      # `repo file <subpath>` on whichever entry it wants.
+      printf '%s' "$RAW" | jq -r 'sort_by(.type, .name) | .[] | "\(if .type == "dir" then .name + "/" else .name end)\t\(.type)\t\(.size // "")"'
+      ;;
+    *)
+      # Symlink, submodule, or something else we don't render. Dump the
+      # JSON so the caller can see what it is.
+      printf '%s\n' "$RAW"
+      ;;
+  esac
   exit 0
 fi

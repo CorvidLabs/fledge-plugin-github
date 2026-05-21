@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.6.2] - 2026-05-21
+
+### Fixes
+
+- `repo view` now also accepts `OWNER/NAME` as a positional argument, matching `gh repo view`'s native syntax. Previously the agent's natural-looking `repo view CorvidLabs/corvid-verify` failed with `unknown argument` and forced an awkward retry with `-R`.
+- `repo file` now detects whether the path resolves to a file or a directory and renders accordingly: file → decoded contents (as before), directory → `name<TAB>type<TAB>size` listing. Previously a directory path hit `jq: expected an object but got: array` and the agent had no way to browse remote repos.
+
 ## [v0.6.1] - 2026-05-21
 
 ### Fixes
