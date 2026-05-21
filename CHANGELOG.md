@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.6.1] - 2026-05-21
+
+### Fixes
+
+- Add `-R, --repo OWNER/NAME` flag to `prs`, `issues`, and `checks` so agents can target any repo without first changing into a clone. Previously every PR / issue subcommand defaulted to `gh`'s cwd-based detection, which silently pointed at the wrong repo when the agent was running in a different working tree — leading to spurious 404s when looking up a PR in a different project.
+- `checks -R OWNER/NAME` now falls back to that repo's default branch when `--branch` isn't given, instead of using the local current branch (which has no meaning cross-repo).
+
 ## [v0.6.0] - 2026-05-21
 
 ### Features

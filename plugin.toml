@@ -1,14 +1,14 @@
 [plugin]
 name = "fledge-plugin-github"
-version = "0.6.0"
+version = "0.6.1"
 description = "GitHub commands for fledge — list/view/create/comment/review/merge PRs, list/view/create/comment/close issues, read repo files, view CI checks, and poll for daemon events via the gh CLI"
 author = "0xLeif"
 license = "MIT"
 
 [[commands]]
 name = "github"
-description = "GitHub commands via the gh CLI. Subcommands: prs (list/view <num> [--diff --comments]/create/comment <num> -b BODY/review <num> --approve|--request-changes|--comment-review -b BODY/merge <num>/close <num>/reopen <num>), issues (list/view <num> [--comments]/create/comment <num> -b BODY/close <num>/reopen <num>), repo (view / file <path> [--ref REF] [-R OWNER/NAME]), checks (CI status), poll (daemon event polling)."
+description = "GitHub commands via the gh CLI. All subcommands accept -R OWNER/NAME to target any repo (the agent's working dir is otherwise used). Subcommands: prs (list/view <num> [--diff --comments]/create/comment <num> -b BODY/review <num> --approve|--request-changes|--comment-review -b BODY/merge <num>/close <num>/reopen <num>), issues (list/view <num> [--comments]/create/comment <num> -b BODY/close <num>/reopen <num>), repo (view / file <path> [--ref REF]), checks (CI status), poll (daemon event polling)."
 binary = "bin/fledge-github"
 args = [
-    { name = "args", type = "string", required = true, description = "Subcommand and options, e.g. 'prs view 208 --diff', 'prs comment 208 -b \"LGTM\"', 'issues create -t \"Bug\" -b \"...\"', 'repo file CHANGELOG.md -R CorvidLabs/merlin'" },
+    { name = "args", type = "string", required = true, description = "Subcommand and options. Pass -R OWNER/NAME to target any repo without changing directory. Examples: 'prs view 5 -R CorvidLabs/corvid-verify --diff', 'prs comment 208 -b \"LGTM\"', 'issues create -R CorvidLabs/merlin -t \"Bug\" -b \"...\"', 'repo file CHANGELOG.md -R CorvidLabs/merlin'" },
 ]

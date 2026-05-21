@@ -15,6 +15,12 @@ BODY=""
 ASSIGNEE=""
 JSON=false
 INCLUDE_COMMENTS=false
+REPO=""
+
+# Splice "${REPO_FLAGS[@]+...}" into each gh sub-call so it inherits
+# the user's -R/--repo when set, or stays empty (gh falls back to its
+# cwd detection) when not.
+REPO_FLAGS=()
 
 # First positional arg can be a subcommand.
 if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
@@ -48,6 +54,7 @@ while [ $# -gt 0 ]; do
     -a|--assignee)   ASSIGNEE="${2:-}"; shift 2;;
     --json)          JSON=true; shift;;
     --comments)      INCLUDE_COMMENTS=true; shift;;
+    -R|--repo)       REPO="${2:-}"; shift 2;;
     -h|--help)
       cat <<'EOF'
 fledge github issues — manage GitHub issues via the gh CLI
@@ -100,6 +107,12 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 127
 fi
 
+# Expand --repo into the gh flag form (see fledge-github-prs for the
+# rationale on the +-form expansion below).
+if [ -n "$REPO" ]; then
+  REPO_FLAGS=(--repo "$REPO")
+fi
+
 case "$ACTION" in
   view|comment|close|reopen)
     if [ -z "$NUMBER" ]; then
@@ -111,13 +124,13 @@ esac
 
 if [ "$ACTION" = "view" ]; then
   if [ "$JSON" = "true" ]; then
-    gh issue view "$NUMBER" --json number,title,state,author,body,labels,createdAt,updatedAt,url,assignees
+    gh issue view "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}" --json number,title,state,author,body,labels,createdAt,updatedAt,url,assignees
   else
-    gh issue view "$NUMBER"
+    gh issue view "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}"
   fi
   if [ "$JSON" != "true" ] && [ "$INCLUDE_COMMENTS" = "true" ]; then
     printf '\n--- Comments ---\n'
-    gh issue view "$NUMBER" --comments
+    gh issue view "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}" --comments
   fi
   exit 0
 fi
@@ -128,26 +141,27 @@ if [ "$ACTION" = "comment" ]; then
     exit 64
   fi
   if [ "$JSON" = "true" ]; then
-    URL="$(gh issue comment "$NUMBER" -b "$BODY")"
+    URL="$(gh issue comment "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}" -b "$BODY")"
     printf '{"url":"%s"}\n' "$URL"
   else
-    gh issue comment "$NUMBER" -b "$BODY"
+    gh issue comment "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}" -b "$BODY"
   fi
   exit 0
 fi
 
 if [ "$ACTION" = "close" ]; then
-  gh issue close "$NUMBER"
+  gh issue close "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}"
   exit 0
 fi
 
 if [ "$ACTION" = "reopen" ]; then
-  gh issue reopen "$NUMBER"
+  gh issue reopen "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}"
   exit 0
 fi
 
 if [ "$ACTION" = "create" ]; then
   ARGS=()
+  [ -n "$REPO" ]     && ARGS+=(--repo "$REPO")
   [ -n "$TITLE" ]    && ARGS+=(--title "$TITLE")
   [ -n "$BODY" ]     && ARGS+=(--body "$BODY")
   [ -n "$LABEL" ]    && ARGS+=(--label "$LABEL")
@@ -161,7 +175,9 @@ if [ "$ACTION" = "create" ]; then
 fi
 
 # list
-ARGS=(--state "$STATE" --limit "$LIMIT")
+ARGS=()
+[ -n "$REPO" ] && ARGS+=(--repo "$REPO")
+ARGS+=(--state "$STATE" --limit "$LIMIT")
 if [ -n "$LABEL" ]; then ARGS+=(--label "$LABEL"); fi
 
 if [ "$JSON" = "true" ]; then

@@ -20,6 +20,12 @@ INCLUDE_DIFF=false
 INCLUDE_COMMENTS=false
 MERGE_METHOD="squash"
 REVIEW_KIND=""
+REPO=""
+
+# When -R/--repo is set, every gh sub-call gets `--repo $REPO`
+# appended via REPO_FLAGS. Empty when -R isn't set, so the gh CLI
+# falls back to its normal cwd-based repo detection.
+REPO_FLAGS=()
 
 # ANSI color codes
 BLUE=$'\033[0;34m'
@@ -69,6 +75,7 @@ while [ $# -gt 0 ]; do
     --approve)          REVIEW_KIND="approve"; shift;;
     --request-changes)  REVIEW_KIND="request-changes"; shift;;
     --comment-review)   REVIEW_KIND="comment"; shift;;
+    -R|--repo)          REPO="${2:-}"; shift 2;;
     -h|--help)
       cat <<'EOF'
 fledge github prs — manage GitHub pull requests via the gh CLI
@@ -141,6 +148,13 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 127
 fi
 
+# Expand --repo into the gh flag form. Done once here so every action
+# branch can splice "${REPO_FLAGS[@]+...}" into its gh invocation
+# without re-checking $REPO.
+if [ -n "$REPO" ]; then
+  REPO_FLAGS=(--repo "$REPO")
+fi
+
 # All non-list actions except 'create' need a number.
 case "$ACTION" in
   view|comment|review|merge|close|reopen)
@@ -153,9 +167,9 @@ esac
 
 if [ "$ACTION" = "view" ]; then
   if [ "$JSON" = "true" ]; then
-    gh pr view "$NUMBER" --json number,title,state,author,body,labels,createdAt,updatedAt,url,baseRefName,headRefName,isDraft,mergeable,statusCheckRollup
+    gh pr view "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}" --json number,title,state,author,body,labels,createdAt,updatedAt,url,baseRefName,headRefName,isDraft,mergeable,statusCheckRollup
   else
-    gh pr view "$NUMBER"
+    gh pr view "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}"
   fi
   # Optional appendices below the main view block. Each section is
   # gated by its own flag and separated by a blank line so the output
@@ -164,11 +178,11 @@ if [ "$ACTION" = "view" ]; then
   # parsing concatenated streams.
   if [ "$JSON" != "true" ] && [ "$INCLUDE_COMMENTS" = "true" ]; then
     printf '\n--- Comments + Reviews ---\n'
-    gh pr view "$NUMBER" --comments
+    gh pr view "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}" --comments
   fi
   if [ "$JSON" != "true" ] && [ "$INCLUDE_DIFF" = "true" ]; then
     printf '\n--- Diff ---\n'
-    gh pr diff "$NUMBER"
+    gh pr diff "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}"
   fi
   exit 0
 fi
@@ -181,10 +195,10 @@ if [ "$ACTION" = "comment" ]; then
   if [ "$JSON" = "true" ]; then
     # gh pr comment prints the comment URL to stdout when -b is used;
     # wrap that in a tiny JSON shape so callers can parse it uniformly.
-    URL="$(gh pr comment "$NUMBER" -b "$BODY")"
+    URL="$(gh pr comment "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}" -b "$BODY")"
     printf '{"url":"%s"}\n' "$URL"
   else
-    gh pr comment "$NUMBER" -b "$BODY"
+    gh pr comment "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}" -b "$BODY"
   fi
   exit 0
 fi
@@ -199,6 +213,7 @@ if [ "$ACTION" = "review" ]; then
     exit 64
   fi
   ARGS=("$NUMBER")
+  [ -n "$REPO" ] && ARGS+=(--repo "$REPO")
   case "$REVIEW_KIND" in
     approve)         ARGS+=(--approve);;
     request-changes) ARGS+=(--request-changes);;
@@ -211,20 +226,20 @@ fi
 
 if [ "$ACTION" = "merge" ]; then
   case "$MERGE_METHOD" in
-    squash) gh pr merge "$NUMBER" --squash;;
-    merge)  gh pr merge "$NUMBER" --merge;;
-    rebase) gh pr merge "$NUMBER" --rebase;;
+    squash) gh pr merge "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}" --squash;;
+    merge)  gh pr merge "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}" --merge;;
+    rebase) gh pr merge "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}" --rebase;;
   esac
   exit 0
 fi
 
 if [ "$ACTION" = "close" ]; then
-  gh pr close "$NUMBER"
+  gh pr close "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}"
   exit 0
 fi
 
 if [ "$ACTION" = "reopen" ]; then
-  gh pr reopen "$NUMBER"
+  gh pr reopen "$NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}"
   exit 0
 fi
 
@@ -372,6 +387,7 @@ Output only the title and body. No preamble, no meta-commentary."
 
   # Build gh pr create argument list
   ARGS=()
+  [ -n "$REPO" ]  && ARGS+=(--repo "$REPO")
   [ -n "$TITLE" ] && ARGS+=(--title "$TITLE")
   [ -n "$BODY" ]  && ARGS+=(--body "$BODY")
   [ -n "$BASE" ]  && ARGS+=(--base "$BASE")
@@ -387,8 +403,8 @@ fi
 
 # list
 if [ "$JSON" = "true" ]; then
-  gh pr list --state "$STATE" --limit "$LIMIT" \
+  gh pr list "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}" --state "$STATE" --limit "$LIMIT" \
     --json number,title,state,author,createdAt,url,baseRefName,headRefName,isDraft,labels
 else
-  gh pr list --state "$STATE" --limit "$LIMIT"
+  gh pr list "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}" --state "$STATE" --limit "$LIMIT"
 fi
