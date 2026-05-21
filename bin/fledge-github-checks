@@ -8,11 +8,16 @@ set -euo pipefail
 
 BRANCH=""
 JSON=false
+REPO_OVERRIDE=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
     -b|--branch)
       BRANCH="${2:-}"
+      shift 2
+      ;;
+    -R|--repo)
+      REPO_OVERRIDE="${2:-}"
       shift 2
       ;;
     --json)
@@ -27,13 +32,15 @@ USAGE:
   fledge github checks [OPTIONS]
 
 OPTIONS:
-  -b, --branch <NAME>  Branch to check (default: current branch)
-      --json           Output raw GitHub API response as JSON
-  -h, --help           Show this help
+  -b, --branch <NAME>      Branch to check (default: current branch)
+  -R, --repo <OWNER/NAME>  Target repo (default: current working repo)
+      --json               Output raw GitHub API response as JSON
+  -h, --help               Show this help
 
 EXAMPLES:
   fledge github checks
   fledge github checks --branch main
+  fledge github checks -R CorvidLabs/merlin --branch main
   fledge github checks --json | jq '.check_runs[].name'
 EOF
       exit 0
@@ -50,18 +57,34 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 127
 fi
 
-if [ -z "$BRANCH" ]; then
-  BRANCH="$(git branch --show-current 2>/dev/null || true)"
+# Resolve repo. When -R is set, use that directly; otherwise let gh
+# detect from cwd. Branch defaults to the current local branch — that
+# only makes sense when REPO_OVERRIDE is empty, but the user can still
+# pass --branch explicitly for the cross-repo case.
+if [ -n "$REPO_OVERRIDE" ]; then
+  REPO="$REPO_OVERRIDE"
   if [ -z "$BRANCH" ]; then
-    echo "fledge github checks: not on a branch (detached HEAD?). Use --branch <name>." >&2
-    exit 65
+    # Fall back to that repo's default branch when no --branch was passed.
+    BRANCH="$(gh repo view "$REPO" --json defaultBranchRef --jq '.defaultBranchRef.name' 2>/dev/null || true)"
+    if [ -z "$BRANCH" ]; then
+      echo "fledge github checks: could not determine default branch for $REPO. Use --branch <name>." >&2
+      exit 65
+    fi
   fi
-fi
+else
+  if [ -z "$BRANCH" ]; then
+    BRANCH="$(git branch --show-current 2>/dev/null || true)"
+    if [ -z "$BRANCH" ]; then
+      echo "fledge github checks: not on a branch (detached HEAD?). Use --branch <name>." >&2
+      exit 65
+    fi
+  fi
 
-REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true)"
-if [ -z "$REPO" ]; then
-  echo "fledge github checks: could not detect GitHub repo. Run 'gh auth login' and ensure 'origin' points at a GitHub remote." >&2
-  exit 1
+  REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true)"
+  if [ -z "$REPO" ]; then
+    echo "fledge github checks: could not detect GitHub repo. Run 'gh auth login' and ensure 'origin' points at a GitHub remote, or pass -R OWNER/NAME." >&2
+    exit 1
+  fi
 fi
 
 DATA="$(gh api "repos/${REPO}/commits/${BRANCH}/check-runs" 2>/dev/null || true)"
