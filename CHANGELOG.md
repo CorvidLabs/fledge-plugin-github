@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.6.3] - 2026-05-21
+
+### Features
+
+- `repo clone <OWNER/NAME> [DIR]` — structured clone command, wraps `gh repo clone` (inherits your `gh auth` for private repos). Optional `--depth N` for shallow clones.
+- `repo workspace <OWNER/NAME> [-r REF] [--depth N]` — the higher-level "give me a sandbox" command for agents. Creates a fresh `/tmp/fledge-gh-<owner>-<name>-XXXXXX/<name>` dir, clones the repo there (optionally shallow + at a specific ref), and prints the absolute path on stdout. The `-r REF` is wired through to git's `--branch` so shallow + ref work together.
+- `repo workspace-clean <DIR>` — `rm -rf`s a workspace dir. Refuses to remove anything that doesn't live under `/tmp/fledge-gh-`, so a bad agent path can't wipe arbitrary files.
+
+These give agents driven from non-interactive bridges (Discord/Telegram) a structured path to clone a repo for edit work, instead of falling back to `shell-exec git clone ...` which is auto-denied by the Tier 1.5 safety gate in merlin's `--yes` mode.
+
 ## [v0.6.2] - 2026-05-21
 
 ### Fixes

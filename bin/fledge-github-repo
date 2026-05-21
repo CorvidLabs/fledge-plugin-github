@@ -14,6 +14,8 @@ REPO=""
 REF=""
 PATH_ARG=""
 JSON=false
+CLONE_DIR=""
+DEPTH=""
 
 if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
   case "$1" in
@@ -38,6 +40,36 @@ if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
         shift
       fi
       ;;
+    clone)
+      ACTION="clone"
+      shift
+      # Two positionals: OWNER/NAME and an optional target DIR.
+      # `gh repo clone` accepts both; we pass them through verbatim.
+      if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ] && [[ "$1" == */* ]]; then
+        REPO="$1"
+        shift
+      fi
+      if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
+        CLONE_DIR="$1"
+        shift
+      fi
+      ;;
+    workspace)
+      ACTION="workspace"
+      shift
+      if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ] && [[ "$1" == */* ]]; then
+        REPO="$1"
+        shift
+      fi
+      ;;
+    workspace-clean)
+      ACTION="workspace-clean"
+      shift
+      if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
+        CLONE_DIR="$1"
+        shift
+      fi
+      ;;
   esac
 fi
 
@@ -45,24 +77,38 @@ while [ $# -gt 0 ]; do
   case "$1" in
     -R|--repo)   REPO="${2:-}"; shift 2;;
     -r|--ref)    REF="${2:-}"; shift 2;;
+    --depth)     DEPTH="${2:-}"; shift 2;;
     --json)      JSON=true; shift;;
     -h|--help)
       cat <<'EOF'
 fledge github repo — read repo metadata and file contents via the gh CLI
 
 USAGE:
-  fledge github repo [view] [OWNER/NAME]         View repo metadata (default)
-  fledge github repo file <PATH>                 Read a file OR list a directory
+  fledge github repo [view] [OWNER/NAME]            View repo metadata (default)
+  fledge github repo file <PATH>                    Read a file OR list a directory
+  fledge github repo clone <OWNER/NAME> [DIR]       Clone a repo via `gh repo clone`
+  fledge github repo workspace <OWNER/NAME>         Clone into a fresh /tmp dir, print path
+  fledge github repo workspace-clean <DIR>          rm -rf a workspace dir (safety-checked)
 
 OPTIONS:
   -R, --repo <OWNER/NAME>   Target repo (default: current working repo).
-                            view also accepts OWNER/NAME as a positional.
-  -r, --ref <REF>           Branch / tag / SHA (file only; default: repo default)
+                            view + clone + workspace also accept it as a positional.
+  -r, --ref <REF>           Branch / tag / SHA (file: lookup; workspace: checkout)
+      --depth <N>           Shallow-clone depth (clone + workspace)
       --json                Output JSON
 
 The `file` action returns the file's decoded contents when PATH is a
 file, or a tab-separated listing (name<TAB>type<TAB>size) when PATH
 is a directory — same command, agent can browse and read with one tool.
+
+`clone` wraps `gh repo clone OWNER/NAME [DIR]` directly.
+
+`workspace` is the higher-level "give me a sandbox" command for
+agents: creates a fresh `/tmp/fledge-gh-<owner>-<name>-XXXXXX/<name>`
+directory, clones the repo there (optionally shallow + at a specific
+ref), and prints the absolute path on stdout. Cleanup via
+`workspace-clean <DIR>` which `rm -rf`s after sanity-checking the
+path is under `/tmp/fledge-gh-`.
 
 EXAMPLES:
   fledge github repo
@@ -70,8 +116,12 @@ EXAMPLES:
   fledge github repo view -R CorvidLabs/merlin --json
   fledge github repo file CHANGELOG.md
   fledge github repo file Sources -R CorvidLabs/corvid-verify
-  fledge github repo file README.md -R CorvidLabs/fledge-plugin-github
   fledge github repo file Cargo.toml -r v0.3.0
+  fledge github repo clone CorvidLabs/corvid-verify
+  fledge github repo clone CorvidLabs/corvid-verify /tmp/cv --depth 1
+  fledge github repo workspace CorvidLabs/corvid-verify
+  fledge github repo workspace CorvidLabs/corvid-verify -r feat/jwks-endpoint --depth 1
+  fledge github repo workspace-clean /tmp/fledge-gh-CorvidLabs-corvid-verify-abc123
 EOF
       exit 0
       ;;
@@ -85,6 +135,110 @@ done
 if ! command -v gh >/dev/null 2>&1; then
   echo "fledge github repo: gh CLI is not installed. https://cli.github.com/" >&2
   exit 127
+fi
+
+if [ "$ACTION" = "clone" ]; then
+  if [ -z "$REPO" ]; then
+    echo "fledge github repo clone: missing OWNER/NAME. Try: fledge github repo clone CorvidLabs/merlin" >&2
+    exit 64
+  fi
+  ARGS=("$REPO")
+  [ -n "$CLONE_DIR" ] && ARGS+=("$CLONE_DIR")
+  if [ -n "$DEPTH" ]; then
+    # `gh repo clone` forwards anything after `--` to git, so depth
+    # has to land there. Position matters: ARGS first, then `--`,
+    # then git-specific options.
+    ARGS+=(-- --depth "$DEPTH")
+  fi
+  gh repo clone "${ARGS[@]}"
+  exit 0
+fi
+
+if [ "$ACTION" = "workspace" ]; then
+  if [ -z "$REPO" ]; then
+    echo "fledge github repo workspace: missing OWNER/NAME. Try: fledge github repo workspace CorvidLabs/merlin" >&2
+    exit 64
+  fi
+
+  # Sanitize OWNER/NAME for use in a path: replace anything that isn't
+  # alnum/-/./_ with `_`. That keeps the resulting dir name human-
+  # readable (so the agent's logs make sense) and avoids the very real
+  # risk of an attacker-controlled repo name escaping the /tmp prefix
+  # via something cute like `../../etc/passwd`.
+  OWNER_NAME_SAFE="$(printf '%s' "$REPO" | tr '/' '-' | tr -c 'A-Za-z0-9._-' '_')"
+
+  # The plain repo name (post-slash) becomes the inner clone dir, so
+  # the agent can `cd $WORKSPACE` and end up at the repo root, matching
+  # everyone's existing intuition about `git clone owner/repo`.
+  NAME_ONLY="${REPO#*/}"
+  NAME_ONLY_SAFE="$(printf '%s' "$NAME_ONLY" | tr -c 'A-Za-z0-9._-' '_')"
+
+  # mktemp -d gives us a unique parent. The clone target is one level
+  # deeper so cleanup of the parent removes both the dir and any junk
+  # gh / git leave behind.
+  PARENT="$(mktemp -d "/tmp/fledge-gh-${OWNER_NAME_SAFE}-XXXXXX")"
+  TARGET="${PARENT}/${NAME_ONLY_SAFE}"
+
+  # Build the gh repo clone arg list. Everything after `--` is passed
+  # to git itself. We put --branch / --depth there together so a
+  # shallow clone targets the requested ref directly — without that,
+  # `--depth 1` + post-clone checkout fails because the shallow fetch
+  # only contains the default branch's tip.
+  CLONE_ARGS=("$REPO" "$TARGET")
+  GIT_ARGS=()
+  [ -n "$REF" ]   && GIT_ARGS+=(--branch "$REF")
+  [ -n "$DEPTH" ] && GIT_ARGS+=(--depth "$DEPTH")
+  if [ "${#GIT_ARGS[@]}" -gt 0 ]; then
+    CLONE_ARGS+=(-- "${GIT_ARGS[@]}")
+  fi
+
+  # Clone with stderr passed through so the user/agent sees progress
+  # and any auth errors. Stdout is reserved for the final path so a
+  # JSON-parsing caller doesn't get progress noise mixed in.
+  if ! gh repo clone "${CLONE_ARGS[@]}" >&2; then
+    # Best-effort cleanup of the empty parent; failure is fine.
+    rmdir "$PARENT" 2>/dev/null || true
+    echo "fledge github repo workspace: gh repo clone failed" >&2
+    exit 1
+  fi
+
+  if [ "$JSON" = "true" ]; then
+    printf '{"path":"%s","repo":"%s","ref":"%s"}\n' "$TARGET" "$REPO" "${REF:-}"
+  else
+    printf '%s\n' "$TARGET"
+  fi
+  exit 0
+fi
+
+if [ "$ACTION" = "workspace-clean" ]; then
+  if [ -z "$CLONE_DIR" ]; then
+    echo "fledge github repo workspace-clean: missing DIR. Try: fledge github repo workspace-clean /tmp/fledge-gh-XXXX" >&2
+    exit 64
+  fi
+  # Safety: only delete dirs that look like fledge-gh workspaces. A
+  # bug in the agent's reasoning shouldn't be able to wipe arbitrary
+  # paths via this tool. The prefix check is intentionally strict —
+  # symlinks and `..` segments fail it cleanly.
+  case "$CLONE_DIR" in
+    /tmp/fledge-gh-*) ;;
+    *)
+      echo "fledge github repo workspace-clean: refusing to remove '$CLONE_DIR' (must start with /tmp/fledge-gh-)" >&2
+      exit 64
+      ;;
+  esac
+  if [ ! -d "$CLONE_DIR" ]; then
+    echo "fledge github repo workspace-clean: no such directory: $CLONE_DIR" >&2
+    exit 1
+  fi
+  # If the caller passed the inner clone path, we still want to remove
+  # the parent so we don't leave an empty fledge-gh-* shell behind.
+  # Walk up only when CLONE_DIR's parent itself matches our prefix.
+  PARENT_OF="$(dirname "$CLONE_DIR")"
+  case "$PARENT_OF" in
+    /tmp/fledge-gh-*) rm -rf -- "$PARENT_OF";;
+    *)                rm -rf -- "$CLONE_DIR";;
+  esac
+  exit 0
 fi
 
 if [ "$ACTION" = "view" ]; then
