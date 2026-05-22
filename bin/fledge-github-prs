@@ -21,6 +21,7 @@ INCLUDE_COMMENTS=false
 MERGE_METHOD="squash"
 REVIEW_KIND=""
 REPO=""
+HEAD_BRANCH=""
 
 # When -R/--repo is set, every gh sub-call gets `--repo $REPO`
 # appended via REPO_FLAGS. Empty when -R isn't set, so the gh CLI
@@ -76,6 +77,7 @@ while [ $# -gt 0 ]; do
     --request-changes)  REVIEW_KIND="request-changes"; shift;;
     --comment-review)   REVIEW_KIND="comment"; shift;;
     -R|--repo)          REPO="${2:-}"; shift 2;;
+    -H|--head)          HEAD_BRANCH="${2:-}"; shift 2;;
     -h|--help)
       cat <<'EOF'
 fledge github prs — manage GitHub pull requests via the gh CLI
@@ -101,6 +103,8 @@ CREATE OPTIONS:
   -t, --title <TITLE>   PR title
   -b, --body <BODY>     PR body
       --base <BRANCH>   Base branch (default: repo default)
+  -H, --head <BRANCH>   Head branch to PR from (default: current local branch).
+                        Required when -R targets a repo that isn't your cwd.
       --draft           Open as draft PR
       --fill            Infer title/body from commits
       --ai              Generate title and body using AI (fledge ask)
@@ -387,10 +391,11 @@ Output only the title and body. No preamble, no meta-commentary."
 
   # Build gh pr create argument list
   ARGS=()
-  [ -n "$REPO" ]  && ARGS+=(--repo "$REPO")
-  [ -n "$TITLE" ] && ARGS+=(--title "$TITLE")
-  [ -n "$BODY" ]  && ARGS+=(--body "$BODY")
-  [ -n "$BASE" ]  && ARGS+=(--base "$BASE")
+  [ -n "$REPO" ]        && ARGS+=(--repo "$REPO")
+  [ -n "$TITLE" ]       && ARGS+=(--title "$TITLE")
+  [ -n "$BODY" ]        && ARGS+=(--body "$BODY")
+  [ -n "$BASE" ]        && ARGS+=(--base "$BASE")
+  [ -n "$HEAD_BRANCH" ] && ARGS+=(--head "$HEAD_BRANCH")
   [ "$DRAFT" = "true" ] && ARGS+=(--draft)
   [ "$FILL" = "true" ]  && ARGS+=(--fill)
   if [ "$JSON" = "true" ]; then
