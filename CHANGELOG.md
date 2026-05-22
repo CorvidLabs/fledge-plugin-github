@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.6.5] - 2026-05-21
+
+### Fixes
+
+- `repo workspace` now creates clones under `~/.fledge/workspaces/<owner>-<name>-XXXXXX/` instead of `/tmp/fledge-gh-XXXXXX/`. macOS auto-prunes `/tmp` and well-meaning disk-cleanup sweeps wipe it, both of which were destroying agent workspaces mid-task. The new location is stable across reboots and shows up alongside the rest of fledge state.
+- `repo workspace-clean` and `repo workspace-push` still accept the legacy `/tmp/fledge-gh-*` prefix so any in-flight workspaces from v0.6.4 and earlier can be pushed or cleaned without manual intervention.
+- Override the workspace root with `FLEDGE_WORKSPACES_DIR` for tests / CI / custom layouts.
+
 ## [v0.6.4] - 2026-05-21
 
 ### Features

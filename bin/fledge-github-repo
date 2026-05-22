@@ -122,11 +122,17 @@ is a directory — same command, agent can browse and read with one tool.
 `clone` wraps `gh repo clone OWNER/NAME [DIR]` directly.
 
 `workspace` is the higher-level "give me a sandbox" command for
-agents: creates a fresh `/tmp/fledge-gh-<owner>-<name>-XXXXXX/<name>`
+agents: creates a fresh `~/.fledge/workspaces/<owner>-<name>-XXXXXX/<name>`
 directory, clones the repo there (optionally shallow + at a specific
 ref), and prints the absolute path on stdout. Cleanup via
 `workspace-clean <DIR>` which `rm -rf`s after sanity-checking the
-path is under `/tmp/fledge-gh-`.
+path is under the workspace root.
+
+Override the workspace root with `FLEDGE_WORKSPACES_DIR` if you want
+a different location (tests, CI, custom layouts). Workspaces from
+the legacy `/tmp/fledge-gh-*` location (v0.6.4 and earlier) still
+clean up correctly so in-flight directories aren't orphaned by the
+upgrade.
 
 EXAMPLES:
   fledge github repo
@@ -182,8 +188,8 @@ if [ "$ACTION" = "workspace" ]; then
   # Sanitize OWNER/NAME for use in a path: replace anything that isn't
   # alnum/-/./_ with `_`. That keeps the resulting dir name human-
   # readable (so the agent's logs make sense) and avoids the very real
-  # risk of an attacker-controlled repo name escaping the /tmp prefix
-  # via something cute like `../../etc/passwd`.
+  # risk of an attacker-controlled repo name escaping the workspace
+  # root via something cute like `../../etc/passwd`.
   OWNER_NAME_SAFE="$(printf '%s' "$REPO" | tr '/' '-' | tr -c 'A-Za-z0-9._-' '_')"
 
   # The plain repo name (post-slash) becomes the inner clone dir, so
@@ -192,10 +198,18 @@ if [ "$ACTION" = "workspace" ]; then
   NAME_ONLY="${REPO#*/}"
   NAME_ONLY_SAFE="$(printf '%s' "$NAME_ONLY" | tr -c 'A-Za-z0-9._-' '_')"
 
+  # Workspaces live under $FLEDGE_WORKSPACES_DIR (default
+  # ~/.fledge/workspaces) so they survive macOS /tmp cleanups, OS
+  # reboots, and well-meaning `rm -rf /tmp/...` sweeps. Plus they
+  # show up in disk-audit reports alongside the rest of fledge state
+  # instead of hiding in /tmp. The env var override is for tests.
+  WORKSPACE_ROOT="${FLEDGE_WORKSPACES_DIR:-$HOME/.fledge/workspaces}"
+  mkdir -p "$WORKSPACE_ROOT"
+
   # mktemp -d gives us a unique parent. The clone target is one level
   # deeper so cleanup of the parent removes both the dir and any junk
   # gh / git leave behind.
-  PARENT="$(mktemp -d "/tmp/fledge-gh-${OWNER_NAME_SAFE}-XXXXXX")"
+  PARENT="$(mktemp -d "${WORKSPACE_ROOT}/${OWNER_NAME_SAFE}-XXXXXX")"
   TARGET="${PARENT}/${NAME_ONLY_SAFE}"
 
   # Build the gh repo clone arg list. Everything after `--` is passed
@@ -231,16 +245,19 @@ fi
 
 if [ "$ACTION" = "workspace-push" ]; then
   if [ -z "$CLONE_DIR" ]; then
-    echo "fledge github repo workspace-push: missing DIR. Try: fledge github repo workspace-push /tmp/fledge-gh-XXX -b feat/fix -m \"msg\"" >&2
+    echo "fledge github repo workspace-push: missing DIR. Try: fledge github repo workspace-push <workspace-path> -b feat/fix -m \"msg\"" >&2
     exit 64
   fi
-  # Same safety guard as workspace-clean: only operate on dirs we
-  # ourselves created, so an agent reasoning bug can't shove arbitrary
-  # local changes upstream via this command.
+  # Safety guard: only operate on dirs we ourselves created. Accept
+  # both the new ~/.fledge/workspaces/ location (v0.6.5+) AND the
+  # legacy /tmp/fledge-gh-* prefix so in-flight workspaces from
+  # older plugin versions still work.
+  WORKSPACE_ROOT="${FLEDGE_WORKSPACES_DIR:-$HOME/.fledge/workspaces}"
   case "$CLONE_DIR" in
+    "$WORKSPACE_ROOT"/*) ;;
     /tmp/fledge-gh-*) ;;
     *)
-      echo "fledge github repo workspace-push: refusing to push from '$CLONE_DIR' (must be a /tmp/fledge-gh-* workspace)" >&2
+      echo "fledge github repo workspace-push: refusing to push from '$CLONE_DIR' (must be a workspace created by 'repo workspace')" >&2
       exit 64
       ;;
   esac
@@ -309,17 +326,22 @@ fi
 
 if [ "$ACTION" = "workspace-clean" ]; then
   if [ -z "$CLONE_DIR" ]; then
-    echo "fledge github repo workspace-clean: missing DIR. Try: fledge github repo workspace-clean /tmp/fledge-gh-XXXX" >&2
+    echo "fledge github repo workspace-clean: missing DIR. Try: fledge github repo workspace-clean <workspace-path>" >&2
     exit 64
   fi
-  # Safety: only delete dirs that look like fledge-gh workspaces. A
-  # bug in the agent's reasoning shouldn't be able to wipe arbitrary
-  # paths via this tool. The prefix check is intentionally strict —
-  # symlinks and `..` segments fail it cleanly.
+  # Safety: only delete dirs that look like workspaces we ourselves
+  # created. Accept the v0.6.5+ ~/.fledge/workspaces/ location AND
+  # the legacy /tmp/fledge-gh-* prefix so this tool can clean up
+  # in-flight workspaces from older plugin versions. A bug in the
+  # agent's reasoning shouldn't be able to wipe arbitrary paths via
+  # this tool — the prefix check is intentionally strict, and
+  # symlinks / `..` segments fail it cleanly.
+  WORKSPACE_ROOT="${FLEDGE_WORKSPACES_DIR:-$HOME/.fledge/workspaces}"
   case "$CLONE_DIR" in
+    "$WORKSPACE_ROOT"/*) ;;
     /tmp/fledge-gh-*) ;;
     *)
-      echo "fledge github repo workspace-clean: refusing to remove '$CLONE_DIR' (must start with /tmp/fledge-gh-)" >&2
+      echo "fledge github repo workspace-clean: refusing to remove '$CLONE_DIR' (must be a workspace created by 'repo workspace')" >&2
       exit 64
       ;;
   esac
@@ -328,12 +350,13 @@ if [ "$ACTION" = "workspace-clean" ]; then
     exit 1
   fi
   # If the caller passed the inner clone path, we still want to remove
-  # the parent so we don't leave an empty fledge-gh-* shell behind.
-  # Walk up only when CLONE_DIR's parent itself matches our prefix.
+  # the parent so we don't leave an empty shell behind. Walk up only
+  # when CLONE_DIR's parent itself matches one of our workspace roots.
   PARENT_OF="$(dirname "$CLONE_DIR")"
   case "$PARENT_OF" in
-    /tmp/fledge-gh-*) rm -rf -- "$PARENT_OF";;
-    *)                rm -rf -- "$CLONE_DIR";;
+    "$WORKSPACE_ROOT"/*) rm -rf -- "$PARENT_OF";;
+    /tmp/fledge-gh-*)    rm -rf -- "$PARENT_OF";;
+    *)                   rm -rf -- "$CLONE_DIR";;
   esac
   exit 0
 fi
