@@ -70,15 +70,30 @@ if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
         shift
       fi
       ;;
+    workspace-push)
+      ACTION="workspace-push"
+      shift
+      if [ $# -gt 0 ] && [ "${1:0:1}" != "-" ]; then
+        CLONE_DIR="$1"
+        shift
+      fi
+      ;;
   esac
 fi
 
+# Workspace-push specific args. Reusing -b/--branch and -m/--message;
+# parsed alongside the existing options below via a small extension.
+WORKSPACE_BRANCH=""
+WORKSPACE_MESSAGE=""
+
 while [ $# -gt 0 ]; do
   case "$1" in
-    -R|--repo)   REPO="${2:-}"; shift 2;;
-    -r|--ref)    REF="${2:-}"; shift 2;;
-    --depth)     DEPTH="${2:-}"; shift 2;;
-    --json)      JSON=true; shift;;
+    -R|--repo)    REPO="${2:-}"; shift 2;;
+    -r|--ref)     REF="${2:-}"; shift 2;;
+    -b|--branch)  WORKSPACE_BRANCH="${2:-}"; shift 2;;
+    -m|--message) WORKSPACE_MESSAGE="${2:-}"; shift 2;;
+    --depth)      DEPTH="${2:-}"; shift 2;;
+    --json)       JSON=true; shift;;
     -h|--help)
       cat <<'EOF'
 fledge github repo — read repo metadata and file contents via the gh CLI
@@ -88,12 +103,15 @@ USAGE:
   fledge github repo file <PATH>                    Read a file OR list a directory
   fledge github repo clone <OWNER/NAME> [DIR]       Clone a repo via `gh repo clone`
   fledge github repo workspace <OWNER/NAME>         Clone into a fresh /tmp dir, print path
+  fledge github repo workspace-push <DIR>           Commit (if -m) + push the workspace branch
   fledge github repo workspace-clean <DIR>          rm -rf a workspace dir (safety-checked)
 
 OPTIONS:
   -R, --repo <OWNER/NAME>   Target repo (default: current working repo).
                             view + clone + workspace also accept it as a positional.
   -r, --ref <REF>           Branch / tag / SHA (file: lookup; workspace: checkout)
+  -b, --branch <NAME>       (workspace-push) target branch — checks out / creates it
+  -m, --message <MSG>       (workspace-push) commit message; omit to push existing commits only
       --depth <N>           Shallow-clone depth (clone + workspace)
       --json                Output JSON
 
@@ -121,6 +139,7 @@ EXAMPLES:
   fledge github repo clone CorvidLabs/corvid-verify /tmp/cv --depth 1
   fledge github repo workspace CorvidLabs/corvid-verify
   fledge github repo workspace CorvidLabs/corvid-verify -r feat/jwks-endpoint --depth 1
+  fledge github repo workspace-push /tmp/fledge-gh-... -b fix/kid -m "Add kid claim"
   fledge github repo workspace-clean /tmp/fledge-gh-CorvidLabs-corvid-verify-abc123
 EOF
       exit 0
@@ -206,6 +225,84 @@ if [ "$ACTION" = "workspace" ]; then
     printf '{"path":"%s","repo":"%s","ref":"%s"}\n' "$TARGET" "$REPO" "${REF:-}"
   else
     printf '%s\n' "$TARGET"
+  fi
+  exit 0
+fi
+
+if [ "$ACTION" = "workspace-push" ]; then
+  if [ -z "$CLONE_DIR" ]; then
+    echo "fledge github repo workspace-push: missing DIR. Try: fledge github repo workspace-push /tmp/fledge-gh-XXX -b feat/fix -m \"msg\"" >&2
+    exit 64
+  fi
+  # Same safety guard as workspace-clean: only operate on dirs we
+  # ourselves created, so an agent reasoning bug can't shove arbitrary
+  # local changes upstream via this command.
+  case "$CLONE_DIR" in
+    /tmp/fledge-gh-*) ;;
+    *)
+      echo "fledge github repo workspace-push: refusing to push from '$CLONE_DIR' (must be a /tmp/fledge-gh-* workspace)" >&2
+      exit 64
+      ;;
+  esac
+  if [ ! -d "$CLONE_DIR/.git" ]; then
+    echo "fledge github repo workspace-push: '$CLONE_DIR' isn't a git workspace" >&2
+    exit 1
+  fi
+
+  # If a target branch was given, switch to it (creating from HEAD when
+  # it doesn't yet exist). Without -b we just use whatever branch is
+  # currently checked out — convenient when the agent passed -r to
+  # `workspace` to land on a feature branch directly.
+  if [ -n "$WORKSPACE_BRANCH" ]; then
+    if git -C "$CLONE_DIR" rev-parse --verify "$WORKSPACE_BRANCH" >/dev/null 2>&1; then
+      git -C "$CLONE_DIR" checkout "$WORKSPACE_BRANCH" >&2
+    else
+      git -C "$CLONE_DIR" checkout -b "$WORKSPACE_BRANCH" >&2
+    fi
+  fi
+
+  CURRENT_BRANCH="$(git -C "$CLONE_DIR" rev-parse --abbrev-ref HEAD)"
+  if [ "$CURRENT_BRANCH" = "HEAD" ]; then
+    echo "fledge github repo workspace-push: detached HEAD; pass -b BRANCH to create one" >&2
+    exit 1
+  fi
+
+  # Stage + commit any uncommitted changes when --message is given.
+  # If the working tree is already clean OR no message was provided,
+  # skip the commit step and just push whatever's there. This lets
+  # the agent use the same command for two cases: (1) it edited files
+  # and wants to commit + push in one go, or (2) it ran git-commit
+  # via the git plugin already and just needs the push.
+  if [ -n "$WORKSPACE_MESSAGE" ]; then
+    # Stage everything. `git add -A` mirrors the typical CLI commit
+    # flow; the agent doesn't need to enumerate paths.
+    git -C "$CLONE_DIR" add -A >&2
+    # Only commit if there's actually something staged — re-running
+    # workspace-push on a clean tree should still push, not error.
+    if ! git -C "$CLONE_DIR" diff --cached --quiet; then
+      git -C "$CLONE_DIR" commit -m "$WORKSPACE_MESSAGE" >&2
+    fi
+  fi
+
+  # Push the current branch upstream. `-u` sets the tracking branch so
+  # subsequent pushes are idempotent. Push stdout/stderr to stderr so
+  # our final JSON / branch-name output isn't muddied.
+  if ! git -C "$CLONE_DIR" push -u origin "$CURRENT_BRANCH" >&2; then
+    echo "fledge github repo workspace-push: git push failed" >&2
+    exit 1
+  fi
+
+  # Detect the repo's owner/name from the cloned remote so the agent
+  # can chain into `prs create -R OWNER/NAME -H BRANCH` without having
+  # to remember what it cloned.
+  ORIGIN_URL="$(git -C "$CLONE_DIR" remote get-url origin 2>/dev/null || true)"
+  # Strip https:// or git@github.com: prefix and a trailing .git.
+  REMOTE_REPO="$(printf '%s' "$ORIGIN_URL" | sed -E 's#(https?://[^/]+/|git@[^:]+:)##; s#\.git$##')"
+
+  if [ "$JSON" = "true" ]; then
+    printf '{"branch":"%s","repo":"%s","path":"%s"}\n' "$CURRENT_BRANCH" "$REMOTE_REPO" "$CLONE_DIR"
+  else
+    printf 'Pushed branch %s to %s\n' "$CURRENT_BRANCH" "$REMOTE_REPO"
   fi
   exit 0
 fi

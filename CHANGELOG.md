@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.6.4] - 2026-05-21
+
+### Features
+
+- `repo workspace-push <DIR> [-b BRANCH] [-m MSG]` — closes the agent edit-and-PR loop. Optionally checks out / creates a branch, optionally stages + commits any uncommitted changes (when `-m` is given), then `git push -u origin HEAD`. Same `/tmp/fledge-gh-*` safety guard as the other workspace commands. In `--json` mode emits `{branch, repo, path}` so the agent can chain straight into `prs create -R … -H …`.
+- `prs create --head <BRANCH>` — wires gh's `--head` through so an agent can create a PR for a branch that lives in a different working tree (the typical post-`workspace-push` case where the cwd isn't the cloned repo).
+
 ## [v0.6.3] - 2026-05-21
 
 ### Features

@@ -1,14 +1,14 @@
 [plugin]
 name = "fledge-plugin-github"
-version = "0.6.3"
+version = "0.6.4"
 description = "GitHub commands for fledge — list/view/create/comment/review/merge PRs, list/view/create/comment/close issues, read repo files, view CI checks, and poll for daemon events via the gh CLI"
 author = "0xLeif"
 license = "MIT"
 
 [[commands]]
 name = "github"
-description = "GitHub commands via the gh CLI. All subcommands accept -R OWNER/NAME to target any repo (the agent's working dir is otherwise used). Subcommands: prs (list/view <num> [--diff --comments]/create/comment <num> -b BODY/review <num> --approve|--request-changes|--comment-review -b BODY/merge <num>/close <num>/reopen <num>), issues (list/view <num> [--comments]/create/comment <num> -b BODY/close <num>/reopen <num>), repo (view OWNER/NAME / file <path> [--ref REF] (handles files and dirs) / clone OWNER/NAME [DIR] / workspace OWNER/NAME [--ref REF] [--depth N] (clones into /tmp/fledge-gh-* and prints the path — preferred for agents needing a local edit sandbox) / workspace-clean DIR), checks (CI status), poll (daemon event polling)."
+description = "GitHub commands via the gh CLI. All subcommands accept -R OWNER/NAME to target any repo (the agent's working dir is otherwise used). Subcommands: prs (list/view <num> [--diff --comments]/create [-H HEAD_BRANCH]/comment <num> -b BODY/review <num> --approve|--request-changes|--comment-review -b BODY/merge <num>/close <num>/reopen <num>), issues (list/view <num> [--comments]/create/comment <num> -b BODY/close <num>/reopen <num>), repo (view OWNER/NAME / file <path> [--ref REF] (handles files and dirs) / clone OWNER/NAME [DIR] / workspace OWNER/NAME [--ref REF] [--depth N] (clones into /tmp/fledge-gh-* and prints the path — preferred for agents needing a local edit sandbox) / workspace-push DIR [-b BRANCH] [-m MSG] (commits + pushes the workspace branch — chain into 'prs create -R … -H …') / workspace-clean DIR), checks (CI status), poll (daemon event polling)."
 binary = "bin/fledge-github"
 args = [
-    { name = "args", type = "string", required = true, description = "Subcommand and options. Pass -R OWNER/NAME for cross-repo lookups. For agent edit sandboxes use 'repo workspace OWNER/NAME [-r BRANCH] [--depth 1]' — it returns a /tmp path; clean up with 'repo workspace-clean <DIR>'. Examples: 'prs view 5 -R CorvidLabs/corvid-verify --diff', 'repo file Sources -R CorvidLabs/corvid-verify --ref feat/x', 'repo workspace CorvidLabs/corvid-verify -r feat/jwks-endpoint --depth 1'" },
+    { name = "args", type = "string", required = true, description = "Subcommand and options. Edit-and-PR loop for another repo: 1) 'repo workspace OWNER/NAME [-r BRANCH] [--depth 1]' returns a /tmp path, 2) edit files there with files-edit/files-write, 3) 'repo workspace-push <PATH> -b feat/x -m \"commit msg\"' commits + pushes, 4) 'prs create -R OWNER/NAME -H feat/x -t \"…\" -b \"…\"' opens the PR, 5) 'repo workspace-clean <PATH>' tidies /tmp." },
 ]
