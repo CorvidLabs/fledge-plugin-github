@@ -3,18 +3,29 @@ name: CI
 on:
   push:
     branches: [main]
+    paths:
+      - bin/**
+      - .github/workflows/ci.yml
   pull_request:
     branches: [main]
+    paths:
+      - bin/**
+      - .github/workflows/ci.yml
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   shellcheck:
     name: ShellCheck
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Run shellcheck
         run: |
           shopt -s nullglob
@@ -30,8 +41,9 @@ jobs:
   syntax:
     name: Bash syntax check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Check bash -n on all scripts
         run: |
           shopt -s nullglob
@@ -47,8 +59,9 @@ jobs:
   smoke:
     name: Smoke (--help)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Run --help on every bin entry
         run: |
           shopt -s nullglob
