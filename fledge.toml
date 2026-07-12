@@ -1,0 +1,9 @@
+# fledge.toml: project task definitions
+[tasks]
+lint = "shellcheck --severity=warning bin/*"
+syntax = "bash -n bin/*"
+smoke = "bin/fledge-github --help"
+
+[lanes.verify]
+description = "Lint, syntax-check, and smoke-test the GitHub command dispatcher"
+steps = ["lint", "syntax", "smoke"]

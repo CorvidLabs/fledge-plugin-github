@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "id": "CHG-0001-adopt-specsync-5-0-1-and-trust-1-0-0-governance-for-the-github-fledge-plugin",
+  "slug": "adopt-specsync-5-0-1-and-trust-1-0-0-governance-for-the-github-fledge-plugin",
+  "title": "Adopt SpecSync 5.0.1 and Trust 1.0.0 governance for the GitHub Fledge plugin",
+  "description": "Adopt SpecSync 5.0.1 and Trust 1.0.0 governance for the GitHub Fledge plugin",
+  "kind": "migration",
+  "state": "draft",
+  "base_commit": "e18318d0d12e1cf4d3f85dcab343b3ea6f1bfb8d",
+  "created_at": 1783878225,
+  "updated_at": 1783878235,
+  "affected_specs": [
+    "github"
+  ],
+  "affected_paths": [
+    "bin/",
+    ".github/",
+    ".specsync/",
+    "specs/",
+    ".trust.toml",
+    "fledge.toml"
+  ],
+  "no_spec_change": false,
+  "no_spec_change_rationale": null,
+  "acceptance_criteria": [
+    "SpecSync strict check passes at explicit advisory threshold 0; all four integrations report installed; Trust doctor and verification pass; ShellCheck",
+    "Bash syntax",
+    "and dispatcher help remain green; live GitHub mutations remain independently authorized"
+  ],
+  "selected_artifacts": [
+    "context",
+    "research",
+    "design",
+    "plan",
+    "tasks",
+    "testing",
+    "docs"
+  ],
+  "dependencies": [],
+  "answers": {
+    "architecture_risk": "yes",
+    "public_contract": "no"
+  }
+}
