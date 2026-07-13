@@ -5,10 +5,10 @@
   "title": "Adopt SpecSync 5.0.1 and Trust 1.0.0 governance for the GitHub Fledge plugin",
   "description": "Adopt SpecSync 5.0.1 and Trust 1.0.0 governance for the GitHub Fledge plugin",
   "kind": "migration",
-  "state": "implementing",
+  "state": "accepted",
   "base_commit": "e18318d0d12e1cf4d3f85dcab343b3ea6f1bfb8d",
   "created_at": 1783878225,
-  "updated_at": 1783953990,
+  "updated_at": 1783954149,
   "affected_specs": [
     "github"
   ],

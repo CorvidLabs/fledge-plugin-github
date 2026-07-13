@@ -13,6 +13,10 @@ spec: github.spec.md
 
 The plugin SHALL provide the documented PR, issue, repository, checks, and poll subcommands through authenticated `gh`.
 
+Acceptance Criteria
+- Offline help succeeds for every `bin/fledge-github*` executable without creating external state.
+- Authenticated GitHub reads and mutations remain separately authorized.
+
 ### REQ-github-002
 
 Supported operations SHALL accept explicit cross-repository targeting and JSON output.
