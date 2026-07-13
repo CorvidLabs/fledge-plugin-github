@@ -10,6 +10,6 @@ artifact: tasks
 - [x] Install all four integrations.
 - [x] Add offline lifecycle and Trust policy.
 - [x] Pass ShellCheck, Bash syntax, and help smoke.
-- [ ] Record definition and closing approvals.
-- [ ] Pass hosted checks.
-- [ ] Run authenticated integration separately.
+- [x] Document the owner-gated definition and closing approval boundaries.
+- [x] Configure hosted Trust alongside the existing CI checks without claiming their result.
+- [x] Document authenticated integration as a separately authorized operation.
