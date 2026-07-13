@@ -13,6 +13,137 @@
       "timestamp": 1783954149,
       "digest": "31cb117ed6c4f5b644d5280f779bca7260bea297de71e290f3df775d7190d214",
       "note": "Closing approval recorded after successful committed-head native verification with explicit requirement evidence."
+    },
+    {
+      "gate": "acceptance",
+      "actor": "user:0xLeif",
+      "timestamp": 1783983796,
+      "digest": "623eccbe4b4c65d710c9481284f1f759adb290df0310a31d5206c3e88eab85bd",
+      "note": "Fresh native verification passed with CHG-0002 present; the prior canonical delta was not replayed. Hosted CI remains required before promotion."
+    },
+    {
+      "gate": "acceptance",
+      "actor": "user:0xLeif",
+      "timestamp": 1783983883,
+      "digest": "781e21aca23beb8e11821f7e3affcbce9704a5e16ddff03ae46ad56cf237f26d",
+      "note": "Fresh native verification passed with truthful extensionless Bash coverage; the prior canonical delta was not replayed. Hosted CI remains required before promotion."
+    },
+    {
+      "gate": "acceptance",
+      "actor": "user:0xLeif",
+      "timestamp": 1783983984,
+      "digest": "623eccbe4b4c65d710c9481284f1f759adb290df0310a31d5206c3e88eab85bd",
+      "note": "Fresh native verification passed after removing the unsupported coverage experiment; the prior canonical delta was not replayed. Hosted CI remains required before promotion."
+    }
+  ],
+  "reopenings": [
+    {
+      "schema_version": 1,
+      "change_id": "CHG-0001-adopt-specsync-5-0-1-and-trust-1-0-0-governance-for-the-github-fledge-plugin",
+      "actor": "user:0xLeif",
+      "reason": "CHG-0002 corrected governed agent instructions and SDD policy inputs after the prior acceptance evidence.",
+      "timestamp": 1783983795,
+      "from_state": "accepted",
+      "to_state": "verifying",
+      "superseded_approval": {
+        "gate": "acceptance",
+        "actor": "user:0xLeif",
+        "timestamp": 1783954149,
+        "digest": "31cb117ed6c4f5b644d5280f779bca7260bea297de71e290f3df775d7190d214",
+        "note": "Closing approval recorded after successful committed-head native verification with explicit requirement evidence."
+      },
+      "prior_verification": {
+        "timestamp": 1783954064,
+        "commit": "22483b4cfcbde9b5843a0dd2311e72ef05d5c5eb",
+        "contract_digest": "44e6d71c807000c9c06c4e8d98c6665fc83f1438febf890fad737ad075bbd5c9",
+        "workspace_digest": "0242b72d92533496a2fa83c21ba90e4ecfccb3d896c0d442ca7a1e4e79074c9b",
+        "acceptance_input_digest": "8675764ba3587505ddf18cf92a4a1582223ee13dce09a7b44df276366a89de3b",
+        "passed": true,
+        "commands": [
+          {
+            "command": "fledge lanes run verify",
+            "success": true,
+            "exit_code": 0
+          }
+        ],
+        "requirement_ids": [
+          "REQ-github-001"
+        ]
+      },
+      "stale_acceptance_input_digest": "8675764ba3587505ddf18cf92a4a1582223ee13dce09a7b44df276366a89de3b",
+      "current_acceptance_input_digest": "395e28afb84dcedea44ff2973f2c2b3de91b47e973157ef025b861fdd071764f"
+    },
+    {
+      "schema_version": 1,
+      "change_id": "CHG-0001-adopt-specsync-5-0-1-and-trust-1-0-0-governance-for-the-github-fledge-plugin",
+      "actor": "user:0xLeif",
+      "reason": "CHG-0003 changed the shared SpecSync coverage configuration after the prior acceptance evidence.",
+      "timestamp": 1783983882,
+      "from_state": "accepted",
+      "to_state": "verifying",
+      "superseded_approval": {
+        "gate": "acceptance",
+        "actor": "user:0xLeif",
+        "timestamp": 1783983796,
+        "digest": "623eccbe4b4c65d710c9481284f1f759adb290df0310a31d5206c3e88eab85bd",
+        "note": "Fresh native verification passed with CHG-0002 present; the prior canonical delta was not replayed. Hosted CI remains required before promotion."
+      },
+      "prior_verification": {
+        "timestamp": 1783983796,
+        "commit": "f5ee59c46fc03e38cf2c3b183c6a139a9b79c46c",
+        "contract_digest": "44e6d71c807000c9c06c4e8d98c6665fc83f1438febf890fad737ad075bbd5c9",
+        "workspace_digest": "9f1ab2d01962c882e002a59bb96377aca157fbf6c6e7bcc9857c12a1ec5e910e",
+        "acceptance_input_digest": "395e28afb84dcedea44ff2973f2c2b3de91b47e973157ef025b861fdd071764f",
+        "passed": true,
+        "commands": [
+          {
+            "command": "fledge lanes run verify",
+            "success": true,
+            "exit_code": 0
+          }
+        ],
+        "requirement_ids": [
+          "REQ-github-001"
+        ]
+      },
+      "stale_acceptance_input_digest": "395e28afb84dcedea44ff2973f2c2b3de91b47e973157ef025b861fdd071764f",
+      "current_acceptance_input_digest": "0492a1c19434be9efa67a9af401aa475c5b026d6baee34033573ed670f9b8223"
+    },
+    {
+      "schema_version": 1,
+      "change_id": "CHG-0001-adopt-specsync-5-0-1-and-trust-1-0-0-governance-for-the-github-fledge-plugin",
+      "actor": "user:0xLeif",
+      "reason": "The unsupported extensionless coverage experiment was removed, restoring the governed SpecSync configuration after the prior evidence.",
+      "timestamp": 1783983983,
+      "from_state": "accepted",
+      "to_state": "verifying",
+      "superseded_approval": {
+        "gate": "acceptance",
+        "actor": "user:0xLeif",
+        "timestamp": 1783983883,
+        "digest": "781e21aca23beb8e11821f7e3affcbce9704a5e16ddff03ae46ad56cf237f26d",
+        "note": "Fresh native verification passed with truthful extensionless Bash coverage; the prior canonical delta was not replayed. Hosted CI remains required before promotion."
+      },
+      "prior_verification": {
+        "timestamp": 1783983883,
+        "commit": "f5ee59c46fc03e38cf2c3b183c6a139a9b79c46c",
+        "contract_digest": "44e6d71c807000c9c06c4e8d98c6665fc83f1438febf890fad737ad075bbd5c9",
+        "workspace_digest": "8a4cc53039e85aee6baa47a81e2cd247fe546256f3c6ecf3835b5d8021a5384e",
+        "acceptance_input_digest": "0492a1c19434be9efa67a9af401aa475c5b026d6baee34033573ed670f9b8223",
+        "passed": true,
+        "commands": [
+          {
+            "command": "fledge lanes run verify",
+            "success": true,
+            "exit_code": 0
+          }
+        ],
+        "requirement_ids": [
+          "REQ-github-001"
+        ]
+      },
+      "stale_acceptance_input_digest": "0492a1c19434be9efa67a9af401aa475c5b026d6baee34033573ed670f9b8223",
+      "current_acceptance_input_digest": "395e28afb84dcedea44ff2973f2c2b3de91b47e973157ef025b861fdd071764f"
     }
   ]
 }

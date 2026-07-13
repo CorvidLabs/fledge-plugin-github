@@ -2,10 +2,9 @@ Create a new spec-sync module spec.
 
 Arguments: $ARGUMENTS
 
-1. Parse the arguments above: the first whitespace-separated token is the
-   module name. If the arguments also contain `--minimal` (in any position),
-   remove it and remember that minimal mode was requested.
-2. Look at whatever text remains. It will be one of:
+1. Remove `--minimal` if present, remember that minimal mode was requested,
+   and preserve the complete remaining input without choosing a module name yet.
+2. Classify the complete remaining input. It will be one of:
    - **A bare module name** — a short identifier like `auth-service` or
      `billing`. Use it as-is.
    - **A free-text feature description** — a sentence or phrase describing
@@ -27,7 +26,7 @@ Arguments: $ARGUMENTS
    `context.md`, `testing.md`, and `design.md` if `companions.design` is
    enabled), a registry entry, and auto-detects related source files.
 5. Open the newly created `specs/<module-name>/<module-name>.spec.md` and fill
-   in the `Purpose`, `Requirements`, and `Public API` sections. If a free-text
+   in the `Purpose`, `Invariants`, and `Public API` sections. If a free-text
    description was given in step 2, use it directly to draft these sections —
    ask clarifying questions if it's underspecified, but do not leave the
    sections as unfilled placeholder text. Do the same for `requirements.md`

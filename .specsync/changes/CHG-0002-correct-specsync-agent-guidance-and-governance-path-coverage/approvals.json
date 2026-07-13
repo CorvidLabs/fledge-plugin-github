@@ -1,0 +1,19 @@
+{
+  "approvals": [
+    {
+      "gate": "definition",
+      "actor": "user:0xLeif",
+      "timestamp": 1783983774,
+      "digest": "70afa89294d7825e1f34f6f3ebd17e7f5ad1469288b20d0e6e4ca027a6079263",
+      "note": "Approved portable definition for non-semantic governance and agent-instruction corrections."
+    },
+    {
+      "gate": "acceptance",
+      "actor": "user:0xLeif",
+      "timestamp": 1783983795,
+      "digest": "d37e1755770d65ecf23944c48cc151d13c47c4038ab35792e96735ba8d28c31a",
+      "note": "Native Fledge verification passed for the non-semantic governance corrections; hosted CI remains required before promotion and is not claimed here."
+    }
+  ],
+  "reopenings": []
+}
