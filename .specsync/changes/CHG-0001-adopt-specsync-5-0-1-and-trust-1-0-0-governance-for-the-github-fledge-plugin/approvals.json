@@ -34,6 +34,13 @@
       "timestamp": 1783983984,
       "digest": "623eccbe4b4c65d710c9481284f1f759adb290df0310a31d5206c3e88eab85bd",
       "note": "Fresh native verification passed after removing the unsupported coverage experiment; the prior canonical delta was not replayed. Hosted CI remains required before promotion."
+    },
+    {
+      "gate": "acceptance",
+      "actor": "user:0xLeif",
+      "timestamp": 1784057091,
+      "digest": "5da156f776cc90e5afc15c06dcac97a79fefe65fe1c70720f6427cd272cffc57",
+      "note": "Closing approval recorded after the complete native Fledge lane passed on the current extensionless-coverage tree; authenticated GitHub operations and hosted Trust success are not claimed."
     }
   ],
   "reopenings": [
@@ -144,6 +151,42 @@
       },
       "stale_acceptance_input_digest": "0492a1c19434be9efa67a9af401aa475c5b026d6baee34033573ed670f9b8223",
       "current_acceptance_input_digest": "395e28afb84dcedea44ff2973f2c2b3de91b47e973157ef025b861fdd071764f"
+    },
+    {
+      "schema_version": 1,
+      "change_id": "CHG-0001-adopt-specsync-5-0-1-and-trust-1-0-0-governance-for-the-github-fledge-plugin",
+      "actor": "user:0xLeif",
+      "reason": "Truthful extensionless coverage and corrected meaningful-path policy change the verified delivery inputs; refresh native verification and portable closing approval.",
+      "timestamp": 1784057022,
+      "from_state": "accepted",
+      "to_state": "verifying",
+      "superseded_approval": {
+        "gate": "acceptance",
+        "actor": "user:0xLeif",
+        "timestamp": 1783983984,
+        "digest": "623eccbe4b4c65d710c9481284f1f759adb290df0310a31d5206c3e88eab85bd",
+        "note": "Fresh native verification passed after removing the unsupported coverage experiment; the prior canonical delta was not replayed. Hosted CI remains required before promotion."
+      },
+      "prior_verification": {
+        "timestamp": 1783983984,
+        "commit": "f5ee59c46fc03e38cf2c3b183c6a139a9b79c46c",
+        "contract_digest": "44e6d71c807000c9c06c4e8d98c6665fc83f1438febf890fad737ad075bbd5c9",
+        "workspace_digest": "9f1ab2d01962c882e002a59bb96377aca157fbf6c6e7bcc9857c12a1ec5e910e",
+        "acceptance_input_digest": "395e28afb84dcedea44ff2973f2c2b3de91b47e973157ef025b861fdd071764f",
+        "passed": true,
+        "commands": [
+          {
+            "command": "fledge lanes run verify",
+            "success": true,
+            "exit_code": 0
+          }
+        ],
+        "requirement_ids": [
+          "REQ-github-001"
+        ]
+      },
+      "stale_acceptance_input_digest": "395e28afb84dcedea44ff2973f2c2b3de91b47e973157ef025b861fdd071764f",
+      "current_acceptance_input_digest": "81619f9dd84045e38dc56281015f1af74938738bf1cd72415345290c707d670e"
     }
   ]
 }

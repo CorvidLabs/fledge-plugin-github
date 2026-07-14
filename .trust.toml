@@ -6,8 +6,8 @@ command = ["fledge", "lanes", "run", "verify"]
 
 [contract]
 enabled = true
-require_coverage = 0
-skip_reason = "SpecSync does not measure extensionless Bash executables; ShellCheck, syntax, and help smokes are blocking"
+require_coverage = 100
+skip_reason = ""
 
 [risk]
 threshold = "block"

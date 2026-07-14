@@ -13,7 +13,49 @@
       "timestamp": 1783983795,
       "digest": "d37e1755770d65ecf23944c48cc151d13c47c4038ab35792e96735ba8d28c31a",
       "note": "Native Fledge verification passed for the non-semantic governance corrections; hosted CI remains required before promotion and is not claimed here."
+    },
+    {
+      "gate": "acceptance",
+      "actor": "user:0xLeif",
+      "timestamp": 1784057092,
+      "digest": "7514164b1b7afaf7916df26ae80102f23c9b0e3ad0bc30b609a903776d3c3f7f",
+      "note": "Closing approval recorded after the complete native Fledge lane passed on the current extensionless-coverage tree; authenticated GitHub operations and hosted Trust success are not claimed."
     }
   ],
-  "reopenings": []
+  "reopenings": [
+    {
+      "schema_version": 1,
+      "change_id": "CHG-0002-correct-specsync-agent-guidance-and-governance-path-coverage",
+      "actor": "user:0xLeif",
+      "reason": "Truthful extensionless coverage and corrected meaningful-path policy change the verified delivery inputs; refresh native verification and portable closing approval.",
+      "timestamp": 1784057022,
+      "from_state": "accepted",
+      "to_state": "verifying",
+      "superseded_approval": {
+        "gate": "acceptance",
+        "actor": "user:0xLeif",
+        "timestamp": 1783983795,
+        "digest": "d37e1755770d65ecf23944c48cc151d13c47c4038ab35792e96735ba8d28c31a",
+        "note": "Native Fledge verification passed for the non-semantic governance corrections; hosted CI remains required before promotion and is not claimed here."
+      },
+      "prior_verification": {
+        "timestamp": 1783983794,
+        "commit": "f5ee59c46fc03e38cf2c3b183c6a139a9b79c46c",
+        "contract_digest": "70afa89294d7825e1f34f6f3ebd17e7f5ad1469288b20d0e6e4ca027a6079263",
+        "workspace_digest": "9f1ab2d01962c882e002a59bb96377aca157fbf6c6e7bcc9857c12a1ec5e910e",
+        "acceptance_input_digest": "c29b09eff794e454f04ada62b1c3a7557b77ea439f953ae78b14d207585f7de9",
+        "passed": true,
+        "commands": [
+          {
+            "command": "fledge lanes run verify",
+            "success": true,
+            "exit_code": 0
+          }
+        ],
+        "requirement_ids": []
+      },
+      "stale_acceptance_input_digest": "c29b09eff794e454f04ada62b1c3a7557b77ea439f953ae78b14d207585f7de9",
+      "current_acceptance_input_digest": "690842db8bc829e4362781a1721032577ecf3a67c7393bf0236a451bfc489489"
+    }
+  ]
 }
