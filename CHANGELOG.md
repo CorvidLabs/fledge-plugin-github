@@ -2,6 +2,22 @@
 
 All notable changes are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [Semantic Versioning](https://semver.org/) once we tag 1.0.
 
+## [v0.6.6] — 2026-08-15
+
+### Fixes
+
+- `prs create --json` and `issues create --json` no longer always fail. Both
+  appended `--json number,url,title` directly to `gh pr create` / `gh issue
+  create`, but neither `gh` subcommand accepts `--json` (only `list`/`view`
+  do) — every JSON-mode create exited with `unknown flag: --json` before
+  creating anything. Worse, retrying the identical command without `--json`
+  looked like the obvious fix and silently succeeded, publishing a real
+  PR/issue with whatever title/body was passed — a footgun for anything
+  scripting a retry. Fixed the same way `prs comment`/`issues comment`
+  already handle this: create without `--json`, parse the number out of the
+  URL `gh` prints on stdout, then fetch `{number, url, title}` from `gh pr
+  view` / `gh issue view`. (#15)
+
 ## [v0.6.5] — 2026-05-21
 
 ### Fixes

@@ -399,7 +399,12 @@ Output only the title and body. No preamble, no meta-commentary."
   [ "$DRAFT" = "true" ] && ARGS+=(--draft)
   [ "$FILL" = "true" ]  && ARGS+=(--fill)
   if [ "$JSON" = "true" ]; then
-    gh pr create "${ARGS[@]}" --json number,url,title
+    # gh pr create has no --json flag (only list/view do); it prints the
+    # new PR's URL on stdout on success. Parse the number out of that URL
+    # and fetch the authoritative shape from gh pr view instead.
+    PR_URL="$(gh pr create "${ARGS[@]}" | tail -n1)"
+    PR_NUMBER="${PR_URL##*/}"
+    gh pr view "$PR_NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}" --json number,url,title
   else
     gh pr create "${ARGS[@]}"
   fi

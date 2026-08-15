@@ -167,7 +167,12 @@ if [ "$ACTION" = "create" ]; then
   [ -n "$LABEL" ]    && ARGS+=(--label "$LABEL")
   [ -n "$ASSIGNEE" ] && ARGS+=(--assignee "$ASSIGNEE")
   if [ "$JSON" = "true" ]; then
-    gh issue create "${ARGS[@]}" --json number,url,title
+    # gh issue create has no --json flag (only list/view do); it prints
+    # the new issue's URL on stdout on success. Parse the number out of
+    # that URL and fetch the authoritative shape from gh issue view instead.
+    ISSUE_URL="$(gh issue create "${ARGS[@]}" | tail -n1)"
+    ISSUE_NUMBER="${ISSUE_URL##*/}"
+    gh issue view "$ISSUE_NUMBER" "${REPO_FLAGS[@]+"${REPO_FLAGS[@]}"}" --json number,url,title
   else
     gh issue create "${ARGS[@]}"
   fi
