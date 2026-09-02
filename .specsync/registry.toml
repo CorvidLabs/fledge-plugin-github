@@ -1,0 +1,5 @@
+[registry]
+name = "fledge-plugin-github-trust-wave4"
+
+[specs]
+github = "specs/github/github.spec.md"

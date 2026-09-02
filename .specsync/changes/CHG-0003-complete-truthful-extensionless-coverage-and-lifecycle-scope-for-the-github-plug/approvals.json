@@ -1,0 +1,33 @@
+{
+  "approvals": [
+    {
+      "gate": "definition",
+      "actor": "user:0xLeif",
+      "timestamp": 1784056974,
+      "digest": "d6c16bcda308a94b8b7f4ca5c83c5d99191bb1836bb31cc2a53e7e62f56d022c",
+      "note": "Definition approved for governance-only extensionless coverage and omitted-path correction; no product behavior, authenticated GitHub operation, hosted success, or closing result is claimed."
+    },
+    {
+      "gate": "definition",
+      "actor": "user:0xLeif",
+      "timestamp": 1784057056,
+      "digest": "5c003eb2988003e9567e9e96ac51c4fcdf75a9451a6ad12fa53c59ad97cff04b",
+      "note": "Definition reapproved after completing the planned governance artifacts; no product behavior or authenticated GitHub operation is changed or claimed."
+    },
+    {
+      "gate": "definition",
+      "actor": "user:0xLeif",
+      "timestamp": 1784057082,
+      "digest": "73f075cd5d585504d38fe2bd719e61ceb110ee8105fc15ab75a1a840c982711b",
+      "note": "Definition reapproved after replacing circular verification tasks with truthful completed configuration and preparation tasks; no hosted or closing result is claimed early."
+    },
+    {
+      "gate": "acceptance",
+      "actor": "user:0xLeif",
+      "timestamp": 1784057092,
+      "digest": "cef4e827329916bde6b4fac72c9086e9c98e6d20bf56b9c36a4f0faaef27303e",
+      "note": "Closing approval recorded after the complete native Fledge lane passed on the current extensionless-coverage tree; authenticated GitHub operations and hosted Trust success are not claimed."
+    }
+  ],
+  "reopenings": []
+}

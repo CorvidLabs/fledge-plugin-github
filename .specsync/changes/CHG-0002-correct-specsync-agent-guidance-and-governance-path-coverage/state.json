@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "id": "CHG-0002-correct-specsync-agent-guidance-and-governance-path-coverage",
+  "slug": "correct-specsync-agent-guidance-and-governance-path-coverage",
+  "title": "Correct SpecSync agent guidance and governance path coverage",
+  "description": "Correct SpecSync agent guidance and governance path coverage",
+  "kind": "documentation",
+  "state": "accepted",
+  "canonical_applied": true,
+  "base_commit": "f5ee59c46fc03e38cf2c3b183c6a139a9b79c46c",
+  "created_at": 1783983718,
+  "updated_at": 1784057092,
+  "affected_specs": [],
+  "affected_paths": [
+    ".claude/commands/specsync/create-spec.md",
+    ".cursor/commands/specsync-create-spec.md",
+    ".gemini/commands/specsync/create-spec.toml",
+    ".gemini/commands/specsync/create-change.toml",
+    ".specsync/sdd.json",
+    "specs/github/github.spec.md"
+  ],
+  "no_spec_change": true,
+  "no_spec_change_rationale": "Correct generated agent instructions, SDD meaningful-path coverage, and canonical changelog formatting without changing GitHub plugin requirements or runtime behavior.",
+  "acceptance_criteria": [
+    "Claude",
+    "Cursor",
+    "and Gemini classify the complete remaining create-spec input before choosing a module name; Gemini create-change shell-escapes the displayed raw arguments exactly once; the SDD policy covers Trust",
+    "Fledge",
+    "Augur",
+    "Attest",
+    "documentation",
+    "and plugin manifests; the canonical changelog row has a valid version; native verification and strict SpecSync 100% coverage pass."
+  ],
+  "selected_artifacts": [
+    "context",
+    "docs",
+    "design",
+    "tasks"
+  ],
+  "dependencies": [],
+  "answers": {
+    "architecture_risk": "no",
+    "public_contract": "no"
+  }
+}

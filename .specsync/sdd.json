@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "enabled": true,
+  "require_change_for_meaningful_files": true,
+  "meaningful_paths": [
+    "bin/",
+    "specs/",
+    ".claude/",
+    ".codex/",
+    ".cursor/",
+    ".gemini/",
+    ".github/",
+    ".attest.json",
+    ".augur.toml",
+    ".trust.toml",
+    "README.md",
+    "AGENTS.md",
+    "plugin.toml",
+    "fledge.toml"
+  ],
+  "ignored_paths": [
+    ".specsync/"
+  ],
+  "verification_commands": [
+    "fledge lanes run verify"
+  ],
+  "custom_artifacts": {},
+  "principles_file": null
+}

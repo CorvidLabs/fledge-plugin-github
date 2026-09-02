@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "id": "CHG-0003-complete-truthful-extensionless-coverage-and-lifecycle-scope-for-the-github-plug",
+  "slug": "complete-truthful-extensionless-coverage-and-lifecycle-scope-for-the-github-plug",
+  "title": "Complete truthful extensionless coverage and lifecycle scope for the GitHub plugin migration",
+  "description": "Complete truthful extensionless coverage and lifecycle scope for the GitHub plugin migration",
+  "kind": "migration",
+  "state": "accepted",
+  "canonical_applied": true,
+  "base_commit": "d429bd93845ee8ffc172778967bd7af4039476bb",
+  "created_at": 1784056907,
+  "updated_at": 1784057092,
+  "affected_specs": [],
+  "affected_paths": [
+    ".specsync/config.toml",
+    ".specsync/sdd.json",
+    ".trust.toml",
+    ".attest.json",
+    ".augur.toml",
+    ".claude/commands/specsync/create-change.md",
+    ".claude/skills/spec-sync/SKILL.md",
+    ".cursor/commands/specsync-create-change.md",
+    ".cursor/skills/spec-sync/SKILL.md",
+    ".gemini/skills/spec-sync/SKILL.md",
+    ".codex/skills/spec-sync/SKILL.md",
+    "AGENTS.md",
+    ".specsync/change-sequence.json"
+  ],
+  "no_spec_change": true,
+  "no_spec_change_rationale": "This governance correction makes SpecSync measure the six existing extensionless Bash executables and accounts for rollout files omitted from lifecycle scope; it does not change plugin behavior or canonical requirement semantics.",
+  "acceptance_criteria": [
+    "Current SpecSync main measures all six extensionless Bash executables at 100% file and LOC coverage; strict lifecycle validation covers every meaningful rollout file; all four agent integrations, the complete native Fledge lane, Trust doctor, and local Trust verification pass without authenticated GitHub operations."
+  ],
+  "selected_artifacts": [
+    "context",
+    "research",
+    "design",
+    "plan",
+    "tasks",
+    "testing",
+    "docs"
+  ],
+  "dependencies": [],
+  "answers": {
+    "architecture_risk": "no",
+    "public_contract": "no"
+  }
+}
