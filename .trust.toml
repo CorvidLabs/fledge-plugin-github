@@ -1,0 +1,22 @@
+schema_version = 1
+profile = "standard"
+
+[lifecycle]
+command = ["fledge", "lanes", "run", "verify"]
+
+[contract]
+enabled = false
+require_coverage = 0
+skip_reason = "SpecSync cannot measure the extensionless Bash executables in bin/, so a contract layer would gate nothing; ShellCheck, bash -n, and --help smoke are the blocking checks"
+
+[risk]
+threshold = "block"
+
+[provenance]
+mode = "soft"
+policy = ".attest.json"
+skip_reason = ""
+
+[atlas]
+enabled = false
+skip_reason = "Atlas publication was not enabled during adoption"

@@ -1,0 +1,10 @@
+# fledge.toml: project task definitions
+# Mirrors the three CI jobs in .github/workflows/ci.yml (ShellCheck, bash -n, --help smoke).
+[tasks]
+lint = "shellcheck --severity=warning bin/fledge-github bin/fledge-github-checks bin/fledge-github-issues bin/fledge-github-poll bin/fledge-github-prs bin/fledge-github-repo"
+syntax = "bash -n bin/fledge-github && bash -n bin/fledge-github-checks && bash -n bin/fledge-github-issues && bash -n bin/fledge-github-poll && bash -n bin/fledge-github-prs && bash -n bin/fledge-github-repo"
+smoke = "bin/fledge-github --help && bin/fledge-github-checks --help && bin/fledge-github-issues --help && bin/fledge-github-poll --help && bin/fledge-github-prs --help && bin/fledge-github-repo --help"
+
+[lanes.verify]
+description = "ShellCheck, bash syntax check, and --help smoke test every GitHub plugin executable"
+steps = ["lint", "syntax", "smoke"]
